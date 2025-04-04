@@ -2,16 +2,16 @@ include"src/require.lua"
 
 -- Constants
 DT = 1/60
-PANEL_HEIGHT = 60
 
 -- Dependencies
 local Animation = require"src/animation"
 local Gui = require"src/gui"
 
 -- Editor state
+local animator --- @type Animator
 local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
-local screen_size --- @type userdata
+ScreenSize = nil --- @type userdata
 local gui_data
 
 --- @return Animation
@@ -32,7 +32,7 @@ end
 --- @param palette_i 0|1|2|3 The palette index to set.
 --- @param first_y integer The first scanline to set the palette for.
 --- @param last_y integer The last scanline to set the palette for.
-local function set_scanline_palette(palette_i,first_y,last_y)
+function set_scanline_palette(palette_i,first_y,last_y)
 	assert(palette_i >= 0 and palette_i < 4,"Palette index must be between 0 and 3.")
 	if first_y > last_y then
 		first_y,last_y = last_y,first_y
@@ -54,6 +54,15 @@ local function set_scanline_palette(palette_i,first_y,last_y)
 	poke(0x5400+first_byte_i,scanline_bytes:get())
 end
 
+local function set_animation(key)
+	animator.anim = animations[key]
+end
+
+local function rename_animation(old,new)
+	if animations[new] then return end
+	animations[old],animations[new] = nil,animations[old]
+end
+
 -- Picotron hooks
 function _init()
 	window{
@@ -62,7 +71,7 @@ function _init()
 	}
 
 	local sw,sh = get_display():attribs()
-	screen_size = vec(sw,sh)
+	ScreenSize = vec(sw,sh)
 
 	mkdir("/ram/cart/anm")
 
@@ -73,20 +82,35 @@ function _init()
 	)
 
 	current_anim_key = next(animations) or "animation_1"
+	animator = Animation.new_animator(animations[current_anim_key])
 
 	local palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100,palette:get())
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
-	set_scanline_palette(1,11,209)
+
+	local accessors = {
+		get_animation_key = function() return current_anim_key end,
+		set_animation_key = function(key) current_anim_key = key end,
+		get_animation_keys = function()
+			local keys = {}
+			for k in pairs(animations) do
+				add(keys,k)
+			end
+			add(keys,"foo")
+			add(keys,"bar")
+			add(keys,"baz")
+			add(keys,"alice")
+			add(keys,"bob")
+			return keys
+		end,
+		set_animation = set_animation,
+		animator = animator
+	}
 
 	gui_data = Gui.initialize(
-		screen_size,
-		{
-			get_animation_key = function(self) return current_anim_key end,
-			set_animation_key = function(self,key) current_anim_key = key end
-		}
+		accessors
 	)
 end
 

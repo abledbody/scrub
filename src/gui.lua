@@ -1,4 +1,7 @@
+local Viewport = require"src/viewport"
+
 local BLINKER_SPEED <const> = 1*DT
+local PANEL_HEIGHT <const> = 60
 
 local blinker = 0
 
@@ -17,6 +20,12 @@ end
 local function fill(self)
 	local col = self.col or 34
 	rectfill(0,0,self.width-1,self.height-1,col)
+end
+
+local function get_offset(self)
+	local pos = vec(self.x,self.y)
+	if not self.parent then return pos end
+	return pos+get_offset(self.parent)
 end
 
 local function attach_field(self,el)
@@ -104,14 +113,72 @@ local function attach_field(self,el)
 	return el
 end
 
-local function initialize(screen_size,accessors)
+local function attach_dropdown_label_button(self, el)
+	local el = self:attach(el)
+	el.hovering = false
+	el.hover_called = false
+
+	function el:update()
+		self.hovering = self.hover_called
+		self.hover_called = false
+	end
+
+	function el:draw()
+		if self.hovering then
+			rectfill(0,0,self.width,self.height,35)
+		end
+
+		print(self.label,1,1,self.col)
+	end
+
+	function el:hover()
+		self.hover_called = true
+	end
+
+	return el
+end
+
+function attach_animation_dropdown(self, el)
+	local el = self:attach(el)
+
+	
+end
+
+local function populate_mutable_list(self)
+	local items = self:get()
+
+	local max_height = ScreenSize.y-get_offset(self).y
+	self.height = min(#items*10+2,max_height)
+
+	for i,item in ipairs(items) do
+		attach_dropdown_label_button(self,{
+			x = 1,y = (i-1)*10+1,
+			width = self.width-10,height = 10,
+			col = 7,
+			click = function() self:select(item) self.hidden = true end,
+			label = item,
+		})
+	end
+end
+
+local function initialize(accessors)
+	-- This one's 269 because the scanlines don't care about window size.
+	set_scanline_palette(1,11,269-PANEL_HEIGHT)
+	
 	local gui = create_gui{
-		update = function(self)
+		update = function()
 			blinker = (blinker+BLINKER_SPEED)%1
 		end
 	}
+
+	local viewport = Viewport.attach_viewport(gui,accessors,{
+		x=0,y=0,
+		width = ScreenSize.x,
+		height = ScreenSize.y-PANEL_HEIGHT
+	})
+
 	local panel = gui:attach{
-		x=0,y=screen_size.y-PANEL_HEIGHT,
+		x=0,y=ScreenSize.y-PANEL_HEIGHT,
 		width = 480,height = PANEL_HEIGHT,
 	}
 
@@ -127,21 +194,46 @@ local function initialize(screen_size,accessors)
 		fill_col = 0,
 		focus_col = 19,
 		text_col = 7,
-		get = accessors.get_animation_key,
-		set = accessors.set_animation_key,
+		get = function() return accessors.get_animation_key() end,
+		set = function(_,key) accessors.set_animation_key(key) end,
 	})
 
-	-- local dropdown_button = toolbar:attach{
-	-- 	x=animation_key_field.x+animation_key_field.width+1,
-	-- 	y=animation_key_field.y,
-	-- 	width = 8,height = 8,
-	-- 	click = function(self)
+	local dropdown_container
 
-	-- 	end,
-	-- 	draw = function()
-	-- 		spr(1,1,1)
-	-- 	end
-	-- }
+	local dropdown_button = toolbar:attach{
+		x=animation_key_field.x+animation_key_field.width+1,
+		y=animation_key_field.y,
+		width = 8,height = 8,
+		
+		click = function(self)
+			dropdown_container.hidden = not dropdown_container.hidden
+			if not dropdown_container.hidden then
+				dropdown_container:populate()
+			end
+		end,
+		draw = function()
+			spr(1,1,1)
+		end
+	}
+
+	dropdown_container = panel:attach{
+		x = dropdown_button.x, y = dropdown_button.y + dropdown_button.height,
+		width = 150,
+		height = 10,
+		draw = draw_panel,
+		hidden = true,
+		get = function() return accessors.get_animation_keys() end,
+		select = function(_,key) accessors.set_animation(key) end,
+		populate = populate_mutable_list
+	}
+
+	dropdown_container:attach{
+		x = 0,y = 0,
+		width = 10,height = 100
+	}
+
+	dropdown_container:attach_scrollbars()
+	
 
 	return {
 		gui = gui,
