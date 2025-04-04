@@ -1,0 +1,1 @@
+--[[pod,created="2025-04-04 00:01:03",modified="2025-04-04 00:03:56",runtime=17,workspaces={{location="main.lua#1",workspace_index=1},{location="gfx/0.gfx",workspace_index=2},{location="pal/0.pal",workspace_index=6},{location="anm/0.anm",workspace_index=7}}]]
