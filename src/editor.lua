@@ -56,11 +56,42 @@ end
 
 local function set_animation(key)
 	animator.anim = animations[key]
+	current_anim_key = key
 end
 
-local function rename_animation(old,new)
+local function rename_animation(new)
 	if animations[new] then return end
-	animations[old],animations[new] = nil,animations[old]
+	animations[new],animations[current_anim_key] = animations[current_anim_key],nil
+	current_anim_key = new
+end
+
+local function create_animation()
+	local animation_count = 1
+	local anim_name = "animation_1"
+	while animations[anim_name] do
+		animation_count += 1
+		anim_name = "animation_"..animation_count
+	end
+
+	animations[anim_name] = {spr = {0},duration = {0.1}}
+	set_animation(anim_name)
+	return anim_name
+end
+
+local function remove_animation(key)
+	if not animations[key] then return end
+
+	if key == current_anim_key then
+		local next_key = next(animations,key) or next(animations)
+		animations[key] = nil
+		if next_key and next_key ~= current_anim_key then
+			set_animation(next_key)
+		else
+			set_animation(create_animation())
+		end
+	else
+		animations[key] = nil
+	end
 end
 
 -- Picotron hooks
@@ -92,21 +123,20 @@ function _init()
 
 	local accessors = {
 		get_animation_key = function() return current_anim_key end,
-		set_animation_key = function(key) current_anim_key = key end,
+		set_animation_key = rename_animation,
 		get_animation_keys = function()
 			local keys = {}
 			for k in pairs(animations) do
 				add(keys,k)
 			end
-			add(keys,"foo")
-			add(keys,"bar")
-			add(keys,"baz")
-			add(keys,"alice")
-			add(keys,"bob")
 			return keys
 		end,
+		
 		set_animation = set_animation,
-		animator = animator
+		create_animation = create_animation,
+		remove_animation = remove_animation,
+
+		animator = animator,
 	}
 
 	gui_data = Gui.initialize(

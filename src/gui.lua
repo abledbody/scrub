@@ -138,27 +138,93 @@ local function attach_dropdown_label_button(self, el)
 	return el
 end
 
-function attach_animation_dropdown(self, el)
-	local el = self:attach(el)
+local function attach_removable_item(self,el)
+	el = self:attach(el)
 
-	
+	local button = attach_dropdown_label_button(el,{
+		x = 0,y = 0,
+		width = el.width-10,height = el.height,
+		col = 7,
+		label = el.item_key,
+		menu = el.menu,
+		select = el.select,
+		item_key = el.item_key,
+	})
+
+	function button:click()
+		self:select(self.item_key)
+		self.menu.hidden = true
+	end
+
+	local remove_button = el:attach{
+		x = button.width+1,y = 1,
+		width = 7,height = 7,
+		remove = el.remove,
+		menu = el.menu,
+		item_key = el.item_key,
+		draw = function() spr(3,0,0) end,
+	}
+
+	function remove_button:click()
+		self:remove(self.item_key)
+		self.menu.container:populate()
+	end
+
+	return el
 end
 
 local function populate_mutable_list(self)
-	local items = self:get()
+	for i=#self.items,1,-1 do
+		self:detach(self.items[i])
+		deli(self.items,i)
+	end
+	local item_keys = self:get()
 
-	local max_height = ScreenSize.y-get_offset(self).y
-	self.height = min(#items*10+2,max_height)
+	self.height = (#item_keys+1)*10+2
 
-	for i,item in ipairs(items) do
-		attach_dropdown_label_button(self,{
+	for i,item_key in ipairs(item_keys) do
+		self.items[i] = attach_removable_item(self,{
 			x = 1,y = (i-1)*10+1,
-			width = self.width-10,height = 10,
-			col = 7,
-			click = function() self:select(item) self.hidden = true end,
-			label = item,
+			width = self.width,height = 10,
+			select = self.select,
+			remove = self.remove,
+			menu = self.menu,
+			item_key = item_key
 		})
 	end
+
+	self.create_button.y = #item_keys*10+2
+end
+
+local function attach_mutable_dropdown(self,el)
+	el = self:attach(el)
+
+	el.container = el:attach{
+		x = 0,y = 0,
+		width = el.width-8,height = el.height,
+		get = el.get,
+		select = el.select,
+		remove = el.remove,
+		menu = el,
+		items = {},
+	}
+
+	function el.container:populate()
+		populate_mutable_list(self)
+		local max_height = ScreenSize.y-get_offset(el).y
+		el.height = min(self.height,max_height)
+	end
+
+	el.container.create_button = el.container:attach{
+		x = el.container.width-8,y = 1,
+		width = 7,height = 7,
+		click = function() el.create() el.container:populate() end,
+		draw = function() spr(2,0,0) end,
+	}
+
+	el:attach_scrollbars()
+	
+	return el
 end
 
 local function initialize(accessors)
@@ -198,7 +264,7 @@ local function initialize(accessors)
 		set = function(_,key) accessors.set_animation_key(key) end,
 	})
 
-	local dropdown_container
+	local animation_dropdown
 
 	local dropdown_button = toolbar:attach{
 		x=animation_key_field.x+animation_key_field.width+1,
@@ -206,9 +272,9 @@ local function initialize(accessors)
 		width = 8,height = 8,
 		
 		click = function(self)
-			dropdown_container.hidden = not dropdown_container.hidden
-			if not dropdown_container.hidden then
-				dropdown_container:populate()
+			animation_dropdown.hidden = not animation_dropdown.hidden
+			if not animation_dropdown.hidden then
+				animation_dropdown.container:populate()
 			end
 		end,
 		draw = function()
@@ -216,24 +282,17 @@ local function initialize(accessors)
 		end
 	}
 
-	dropdown_container = panel:attach{
+	animation_dropdown = attach_mutable_dropdown(panel,{
 		x = dropdown_button.x, y = dropdown_button.y + dropdown_button.height,
 		width = 150,
 		height = 10,
 		draw = draw_panel,
-		hidden = true,
-		get = function() return accessors.get_animation_keys() end,
+		get = accessors.get_animation_keys,
 		select = function(_,key) accessors.set_animation(key) end,
-		populate = populate_mutable_list
-	}
-
-	dropdown_container:attach{
-		x = 0,y = 0,
-		width = 10,height = 100
-	}
-
-	dropdown_container:attach_scrollbars()
-	
+		create = function(_) accessors.create_animation() end,
+		remove = function(_,key) accessors.remove_animation(key) end,
+		hidden = true,
+	})
 
 	return {
 		gui = gui,
