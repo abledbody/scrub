@@ -250,7 +250,15 @@ local function initialize(accessors)
 
 	local toolbar = panel:attach{
 		x=0,y=0,
-		width = 480,height = 12,
+		width = ScreenSize.x,height = 12,
+		draw = draw_panel,
+	}
+
+	local timeline = panel:attach{
+		x=0,
+		y=toolbar.y+toolbar.height,
+		width = ScreenSize.x,
+		height = PANEL_HEIGHT-toolbar.height-1,
 		draw = draw_panel,
 	}
 

@@ -13,6 +13,7 @@ local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
 ScreenSize = nil --- @type userdata
 local gui_data
+local gfx
 
 --- @return Animation
 local function save_working_file()
@@ -54,6 +55,8 @@ function set_scanline_palette(palette_i,first_y,last_y)
 	poke(0x5400+first_byte_i,scanline_bytes:get())
 end
 
+-- Accessors
+
 local function set_animation(key)
 	animator.anim = animations[key]
 	current_anim_key = key
@@ -94,6 +97,11 @@ local function remove_animation(key)
 	end
 end
 
+local function get_sprite(anim_spr)
+	local sprite = gfx[anim_spr]
+	return sprite and sprite.bmp
+end
+
 -- Picotron hooks
 function _init()
 	window{
@@ -121,6 +129,8 @@ function _init()
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
 
+	gfx = fetch("/ram/cart/gfx/0.gfx")
+
 	local accessors = {
 		get_animation_key = function() return current_anim_key end,
 		set_animation_key = rename_animation,
@@ -136,6 +146,8 @@ function _init()
 		create_animation = create_animation,
 		remove_animation = remove_animation,
 
+		get_sprite = get_sprite,
+
 		animator = animator,
 	}
 
@@ -150,7 +162,6 @@ end
 
 function _draw()
 	cls()
-
 	gui_data.gui:draw_all()
 end
 

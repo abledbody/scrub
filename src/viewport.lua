@@ -11,14 +11,14 @@ local function attach_viewport(self,accessors,el)
 	end
 
 	function el:draw()
-		camera(self.scroll.x, self.scroll.y)
+		camera(self.scroll.x,self.scroll.y)
 
 		local anim_spr = accessors.animator.spr
-		local spr_dat = get_spr(anim_spr)
+		local spr_dat = accessors.get_sprite(anim_spr)
 		local spr_w,spr_h = spr_dat:attribs()
 
-		if not anim_spr then return end
-		sspr(anim_spr, 0, 0, spr_w, spr_h, 0, 0, spr_w*self.zoom, spr_h*self.zoom)
+		if not spr_dat then return end
+		sspr(spr_dat,0,0,spr_w,spr_h,0,0,spr_w*self.zoom,spr_h*self.zoom)
 	end
 
 	function el:drag(msg)
@@ -40,7 +40,7 @@ local function attach_viewport(self,accessors,el)
 		local delta = self.zoom-last_zoom
 
 		local anim_spr = accessors.animator.spr
-		local spr_dat = get_spr(anim_spr)
+		local spr_dat = accessors.get_sprite(anim_spr)
 		local spr_w,spr_h = spr_dat:attribs()
 
 		self.scroll.x += delta*spr_w*0.5
