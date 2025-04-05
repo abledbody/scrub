@@ -138,6 +138,39 @@ local function attach_dropdown_label_button(self, el)
 	return el
 end
 
+local function attach_button(self,el)
+	el = self:attach(el)
+	el.hovering = false
+	el.hover_called = false
+
+	function el:update()
+		self.hovering = self.hover_called
+		self.hover_called = false
+	end
+
+	function el:hover()
+		self.hover_called = true
+	end
+
+	function el:draw()
+		if self.hovering then
+			for swap in all(self.pal_swaps) do
+				pal(swap[1],swap[2])
+			end
+		end
+
+		spr(self.spr,0,0)
+
+		if self.hovering then
+			for swap in all(self.pal_swaps) do
+				pal(swap[1],swap[1])
+			end
+		end
+	end
+
+	return el
+end
+
 local function attach_removable_item(self,el)
 	el = self:attach(el)
 
@@ -156,14 +189,15 @@ local function attach_removable_item(self,el)
 		self.menu.hidden = true
 	end
 
-	local remove_button = el:attach{
+	local remove_button = attach_button(el,{
 		x = button.width+1,y = 1,
 		width = 7,height = 7,
 		remove = el.remove,
 		menu = el.menu,
 		item_key = el.item_key,
-		draw = function() spr(3,0,0) end,
-	}
+		pal_swaps = {{35,24}},
+		spr = 3,
+	})
 
 	function remove_button:click()
 		self:remove(self.item_key)
@@ -215,12 +249,13 @@ local function attach_mutable_dropdown(self,el)
 		el.height = min(self.height,max_height)
 	end
 
-	el.container.create_button = el.container:attach{
+	el.container.create_button = attach_button(el.container,{
 		x = el.container.width-8,y = 1,
 		width = 7,height = 7,
 		click = function() el.create() el.container:populate() end,
-		draw = function() spr(2,0,0) end,
-	}
+		spr = 2,
+		pal_swaps = {{35,24}},
+	})
 
 	el:attach_scrollbars()
 	
@@ -274,9 +309,9 @@ local function initialize(accessors)
 
 	local animation_dropdown
 
-	local dropdown_button = toolbar:attach{
+	local dropdown_button = attach_button(toolbar,{
 		x=animation_key_field.x+animation_key_field.width+1,
-		y=animation_key_field.y,
+		y=animation_key_field.y+1,
 		width = 8,height = 8,
 		
 		click = function(self)
@@ -285,13 +320,12 @@ local function initialize(accessors)
 				animation_dropdown.container:populate()
 			end
 		end,
-		draw = function()
-			spr(1,1,1)
-		end
-	}
+		spr = 1,
+		pal_swaps = {{35,24}}
+	})
 
 	animation_dropdown = attach_mutable_dropdown(panel,{
-		x = dropdown_button.x, y = dropdown_button.y + dropdown_button.height,
+		x = dropdown_button.x+dropdown_button.width, y = dropdown_button.y,
 		width = 150,
 		height = 10,
 		draw = draw_panel,
