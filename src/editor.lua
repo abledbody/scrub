@@ -13,7 +13,8 @@ local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
 ScreenSize = nil --- @type userdata
 local gui_data
-local gfx
+local gfx --- @type [{bmp:userdata}]
+local palette --- @type userdata
 
 --- @return Animation
 local function save_working_file()
@@ -57,17 +58,23 @@ end
 
 -- Accessors
 
+--- Sets the current animation to the one with the given key.
+--- @param key string The key of the animation to switch to.
 local function set_animation(key)
 	animator.anim = animations[key]
 	current_anim_key = key
 end
 
-local function rename_animation(new)
-	if animations[new] then return end
-	animations[new],animations[current_anim_key] = animations[current_anim_key],nil
-	current_anim_key = new
+--- Renames the current animation to the given name.
+--- @param name string The new name for the current animation.
+local function rename_animation(name)
+	if animations[name] then return end
+	animations[name],animations[current_anim_key] = animations[current_anim_key],nil
+	current_anim_key = name
 end
 
+--- Creates a new animation with a unique name and sets it as the current animation.
+--- @return string anim_name The name of the newly created animation.
 local function create_animation()
 	local animation_count = 1
 	local anim_name = "animation_1"
@@ -81,6 +88,8 @@ local function create_animation()
 	return anim_name
 end
 
+--- Removes the animation with the given key.
+--- @param key string The key of the animation to remove.
 local function remove_animation(key)
 	if not animations[key] then return end
 
@@ -97,6 +106,9 @@ local function remove_animation(key)
 	end
 end
 
+--- Fetches a sprite bitmap off the 0.gfx file by index.
+--- @param anim_spr integer The index of the sprite to fetch.
+--- @return userdata sprite_data The sprite bitmap data.
 local function get_sprite(anim_spr)
 	local sprite = gfx[anim_spr]
 	return sprite and sprite.bmp
@@ -123,14 +135,14 @@ function _init()
 	current_anim_key = next(animations) or "animation_1"
 	animator = Animation.new_animator(animations[current_anim_key])
 
-	local palette = fetch("/ram/cart/pal/0.pal")
+	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100,palette:get())
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
 
 	gfx = fetch("/ram/cart/gfx/0.gfx")
-
+	
 	local accessors = {
 		get_animation_key = function() return current_anim_key end,
 		set_animation_key = rename_animation,

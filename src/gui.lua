@@ -1,10 +1,12 @@
 local Viewport = require"src/viewport"
+local Timeline = require"src/timeline"
 
 local BLINKER_SPEED <const> = 1*DT
 local PANEL_HEIGHT <const> = 60
 
 local blinker = 0
 
+--- Draws a beveled panel.
 local function draw_panel(self)
 	local col = self.col or 34
 	local high = self.high or 35
@@ -17,17 +19,20 @@ local function draw_panel(self)
 	line(self.width-1,0,self.width-1,self.height-1,shade)
 end
 
+--- Draws a rectangle across the whole element
 local function fill(self)
 	local col = self.col or 34
 	rectfill(0,0,self.width-1,self.height-1,col)
 end
 
-local function get_offset(self)
+--- @return userdata position Gets the position of an element in screenspace.
+local function get_position(self)
 	local pos = vec(self.x,self.y)
 	if not self.parent then return pos end
-	return pos+get_offset(self.parent)
+	return pos+get_position(self.parent)
 end
 
+--- @param el {get:fun():string,set:fun(string)}
 local function attach_field(self,el)
 	el = self:attach(el)
 	el.offset = 0
@@ -245,7 +250,7 @@ local function attach_mutable_dropdown(self,el)
 
 	function el.container:populate()
 		populate_mutable_list(self)
-		local max_height = ScreenSize.y-get_offset(el).y
+		local max_height = ScreenSize.y-get_position(el).y
 		el.height = min(self.height,max_height)
 	end
 
@@ -289,13 +294,20 @@ local function initialize(accessors)
 		draw = draw_panel,
 	}
 
-	local timeline = panel:attach{
+	local main_panel = panel:attach{
 		x=0,
 		y=toolbar.y+toolbar.height,
 		width = ScreenSize.x,
 		height = PANEL_HEIGHT-toolbar.height-1,
 		draw = draw_panel,
 	}
+
+	local timeline = Timeline.attach_timeline(main_panel,accessors,{
+		x=2,y=2,
+		width = ScreenSize.x-4,height = 8,
+	})
+
+	timeline:populate()
 
 	local animation_key_field = attach_field(toolbar,{
 		x=1,y=1,
