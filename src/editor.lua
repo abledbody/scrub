@@ -8,13 +8,19 @@ local Animation = require"src/animation"
 local Gui = require"src/gui"
 
 -- Editor state
+ScreenSize = nil --- @type userdata
+Lightest = 0
+Darkest = 0
+
 local animator --- @type Animator
 local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
-ScreenSize = nil --- @type userdata
 local gui_data
 local gfx --- @type [{bmp:userdata}]
 local palette --- @type userdata
+local playing --- @type boolean
+
+local on_animations_changed --- @type function
 
 --- @return Animation
 local function save_working_file()
@@ -71,20 +77,24 @@ local function rename_animation(name)
 	if animations[name] then return end
 	animations[name],animations[current_anim_key] = animations[current_anim_key],nil
 	current_anim_key = name
+
+	on_animations_changed()
 end
 
 --- Creates a new animation with a unique name and sets it as the current animation.
 --- @return string anim_name The name of the newly created animation.
 local function create_animation()
 	local animation_count = 1
-	local anim_name = "animation_1"
+	local anim_name = "new_1"
 	while animations[anim_name] do
 		animation_count += 1
-		anim_name = "animation_"..animation_count
+		anim_name = "new_"..animation_count
 	end
 
 	animations[anim_name] = {spr = {0},duration = {0.1}}
 	set_animation(anim_name)
+
+	on_animations_changed()
 	return anim_name
 end
 
@@ -104,6 +114,8 @@ local function remove_animation(key)
 	else
 		animations[key] = nil
 	end
+
+	on_animations_changed()
 end
 
 --- Fetches a sprite bitmap off the 0.gfx file by index.
@@ -112,6 +124,23 @@ end
 local function get_sprite(anim_spr)
 	local sprite = gfx[anim_spr]
 	return sprite and sprite.bmp
+end
+
+local function find_binary_cols()
+	local lightest_mag = 0
+	local darkest_mag = 1000
+	for i = 0,63 do
+		local colnum = palette:get(i)
+		local col = vec(colnum&0xFF,(colnum>>8)&0xFF,(colnum>>16)&0xFF)
+		local mag = col:magnitude()
+		if mag > lightest_mag then
+			Lightest = i
+			lightest_mag = mag
+		elseif mag < darkest_mag then
+			Darkest = i
+			darkest_mag = mag
+		end
+	end
 end
 
 -- Picotron hooks
@@ -132,14 +161,16 @@ function _init()
 		"/ram/cart/anm/0.anm"
 	)
 
-	current_anim_key = next(animations) or "animation_1"
+	current_anim_key = next(animations) or "new_1"
 	animator = Animation.new_animator(animations[current_anim_key])
+	playing = false
 
 	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100,palette:get())
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
+	find_binary_cols()
 
 	gfx = fetch("/ram/cart/gfx/0.gfx")
 	
@@ -155,8 +186,12 @@ function _init()
 		end,
 		
 		set_animation = set_animation,
+		get_animation = function() return animations[current_anim_key] end,
 		create_animation = create_animation,
 		remove_animation = remove_animation,
+
+		get_playing = function() return playing end,
+		set_playing = function(value) playing = value end,
 
 		get_sprite = get_sprite,
 
@@ -166,10 +201,14 @@ function _init()
 	gui_data = Gui.initialize(
 		accessors
 	)
+	on_animations_changed = gui_data.on_animations_changed
 end
 
 function _update()
 	gui_data.gui:update_all()
+	if playing then
+		animator:advance(DT)
+	end
 end
 
 function _draw()
