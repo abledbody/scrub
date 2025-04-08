@@ -420,6 +420,12 @@ local function initialize(accessors)
 		on_animations_changed = function()
 			animation_list_container:populate()
 		end,
+		on_frames_changed = function()
+			timeline.container:fit()
+		end,
+		on_frame_change = function()
+			timeline:align_buttons()
+		end,
 	}
 end
 

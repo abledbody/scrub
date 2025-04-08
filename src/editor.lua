@@ -9,7 +9,7 @@ local Gui = require"src/gui"
 
 -- Editor state
 ScreenSize = nil --- @type userdata
-Lightest = 0
+Lightest = 7
 Darkest = 0
 
 local animator --- @type Animator
@@ -21,6 +21,8 @@ local palette --- @type userdata
 local playing --- @type boolean
 
 local on_animations_changed --- @type function
+local on_frames_changed --- @type function
+local on_frame_change --- @type function
 
 --- @return Animation
 local function save_working_file()
@@ -69,6 +71,7 @@ end
 local function set_animation(key)
 	animator.anim = animations[key]
 	current_anim_key = key
+	animator:reset(1)
 end
 
 --- Renames the current animation to the given name.
@@ -91,7 +94,7 @@ local function create_animation()
 		anim_name = "new_"..animation_count
 	end
 
-	animations[anim_name] = {spr = {0},duration = {0.1}}
+	animations[anim_name] = {spr = {0,1}, duration = {0.1,0.1}}
 	set_animation(anim_name)
 
 	on_animations_changed()
@@ -116,6 +119,36 @@ local function remove_animation(key)
 	end
 
 	on_animations_changed()
+end
+
+local function set_frame(frame_i)
+	animator:reset(mid(1,frame_i,#animations[current_anim_key].duration))
+	on_frame_change()
+end
+
+local function insert_frame()
+	local animation = animations[current_anim_key]
+
+	local frame_i = animator.frame_i+1
+	for _,v in pairs(animation) do
+		add(v,v[frame_i],frame_i)
+	end
+
+	set_frame(frame_i)
+	on_frames_changed()
+end
+
+local function remove_frame()
+	local animation = animations[current_anim_key]
+	if #animation.duration == 1 then return end
+
+	local frame_i = animator.frame_i
+	for _,v in pairs(animation) do
+		deli(v,frame_i)
+	end
+
+	set_frame(frame_i-1)
+	on_frames_changed()
 end
 
 --- Fetches a sprite bitmap off the 0.gfx file by index.
@@ -168,9 +201,9 @@ function _init()
 	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100,palette:get())
+		find_binary_cols()
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
-	find_binary_cols()
 
 	gfx = fetch("/ram/cart/gfx/0.gfx")
 	
@@ -190,6 +223,10 @@ function _init()
 		create_animation = create_animation,
 		remove_animation = remove_animation,
 
+		set_frame = set_frame,
+		insert_frame = insert_frame,
+		remove_frame = remove_frame,
+
 		get_playing = function() return playing end,
 		set_playing = function(value) playing = value end,
 
@@ -202,12 +239,18 @@ function _init()
 		accessors
 	)
 	on_animations_changed = gui_data.on_animations_changed
+	on_frames_changed = gui_data.on_frames_changed
+	on_frame_change = gui_data.on_frame_change
 end
 
 function _update()
 	gui_data.gui:update_all()
 	if playing then
+		local last_frame = animator.frame_i
 		animator:advance(DT)
+		if animator.frame_i ~= last_frame then
+			on_frame_change()
+		end
 	end
 end
 
