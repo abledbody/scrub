@@ -211,6 +211,8 @@ local function rename_property(key,new_key)
 	
 	animation[new_key] = animation[key]
 	animation[key] = nil
+
+	on_properties_changed()
 end
 
 --- @param key any
@@ -265,6 +267,32 @@ local function set_property_by_string(key,value)
 	::type_found::
 	
 	animation[key][animator.frame_i] = value
+	on_properties_changed()
+end
+
+local function create_property()
+	local animation = animations[current_anim_key]
+
+	local property_count = 1
+	local key = "new_1"
+	while animation[key] do
+		key = "new_"..property_count
+		property_count += 1
+	end
+
+	animation[key] = {}
+
+	on_properties_changed()
+	return key
+end
+
+local function remove_property(key)
+	if key == "duration" then return end
+
+	local animation = animations[current_anim_key]
+	if not animation[key] then return end
+	animation[key] = nil
+
 	on_properties_changed()
 end
 
@@ -330,6 +358,8 @@ function _init()
 		get_property_strings = get_property_strings,
 		rename_property = rename_property,
 		set_property_by_string = set_property_by_string,
+		create_property = create_property,
+		remove_property = remove_property,
 
 		get_playing = function() return playing end,
 		set_playing = function(value) playing = value end,

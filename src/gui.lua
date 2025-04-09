@@ -288,7 +288,7 @@ local function attach_properties(self,accessors,el)
 
 	el.list = el:attach{
 		x = 1,y = 1,
-		width = el.width-2,height = el.height-2,
+		width = el.width-2,height = el.height-10,
 	}
 
 	el.container = el.list:attach{
@@ -307,9 +307,11 @@ local function attach_properties(self,accessors,el)
 				width = self.width-9,height = 10,
 			}
 
+			local field_width = (row.width-8)*0.5
+
 			attach_field(row,{
 				x = 0,y = 0,
-				width = row.width*0.5,height = 10,
+				width = field_width,height = 10,
 				fill_col = 0,
 				text_col = 7,
 				fill_col_focused = 19,
@@ -319,8 +321,8 @@ local function attach_properties(self,accessors,el)
 			})
 
 			attach_field(row,{
-				x = row.width*0.5,y = 0,
-				width = row.width*0.5,height = 10,
+				x = field_width,y = 0,
+				width = field_width,height = 10,
 				fill_col = 0,
 				text_col = 7,
 				fill_col_focused = 19,
@@ -329,8 +331,24 @@ local function attach_properties(self,accessors,el)
 				set = function(_,value) accessors.set_property_by_string(key,value) end,
 			})
 
+			if key ~= "duration" then
+				row:attach{
+					x = row.width-7,y = 2,
+					width = 7,height = 7,
+					draw = function(self) spr(3) end,
+					click = function(self) accessors.remove_property(key) end,
+				}
+			end
+
 			return row
 		end
+	}
+
+	el.add_button = el:attach{
+		x = 1,y = el.height-8,
+		width = 8,height = 8,
+		draw = function() spr(2,0,0) end,
+		click = function() accessors.create_property() end,
 	}
 
 	el.draw = draw_panel
