@@ -26,6 +26,7 @@ local on_animations_changed --- @type function
 local on_frames_changed --- @type function
 local on_frame_change --- @type function
 local on_properties_changed --- @type function
+local on_selection_changed --- @type function
 
 --- @return Animation
 local function save_working_file()
@@ -94,26 +95,33 @@ end
 local function insert_frame()
 	local animation = animations[current_anim_key]
 
-	local frame_i = animator.frame_i
+	local sel_last = timeline_selection.last
+
 	for _,v in pairs(animation) do
-		add(v,v[frame_i],frame_i+1)
+		add(v,v[sel_last],sel_last+1)
 	end
 
-	set_frame(frame_i+1)
+	set_frame(sel_last+1)
 	on_frames_changed()
 end
 
 local function remove_frame()
 	local animation = animations[current_anim_key]
-	if #animation.duration == 1 then return end
 
-	local frame_i = animator.frame_i
-	for _,v in pairs(animation) do
-		deli(v,frame_i)
+	local sel_first,sel_last = timeline_selection.first,timeline_selection.last
+	if sel_first > sel_last then
+		sel_first,sel_last = sel_last,sel_first
 	end
 
-	set_frame(frame_i)
+	for _,v in pairs(animation) do
+		for i = sel_last,sel_first,-1 do
+			if #v == 1 then break end
+			deli(v,i)
+		end
+	end
+
 	on_frames_changed()
+	set_frame(sel_first)
 end
 
 --- Sets the current animation to the one with the given key.
@@ -180,10 +188,11 @@ end
 
 local function get_property_strings()
 	local properties = {}
+	local source_frame = timeline_selection.first
 	for k,v in pairs(animations[current_anim_key]) do
 		if type(k) ~= "string" then goto continue end
 		
-		local value = v[animator.frame_i]
+		local value = v[source_frame]
 		local value_type = type(value)
 		if value_type == "userdata" then
 			local str = "("
@@ -267,7 +276,13 @@ local function set_property_by_string(key,value)
 	
 	::type_found::
 	
-	animation[key][animator.frame_i] = value
+	local sel_first,sel_last = timeline_selection.first,timeline_selection.last
+	if sel_first > sel_last then
+		sel_first,sel_last = sel_last,sel_first
+	end
+	for i = sel_first,sel_last do
+		animation[key][i] = value
+	end
 	on_properties_changed()
 end
 
@@ -309,7 +324,13 @@ local function set_timeline_selection(first,last)
 	local length = #animations[current_anim_key].duration
 	first = mid(1,first,length)
 	last = mid(1,last,length)
+
+	if first == timeline_selection.first
+		and last == timeline_selection.last
+	then return end
+
 	timeline_selection = {first = first,last = last}
+	on_selection_changed()
 end
 
 -- Picotron hooks
@@ -386,11 +407,12 @@ function _init()
 
 	on_animations_changed = gui_data.on_animations_changed
 	on_frames_changed = function()
-		gui_data.on_frames_changed()
 		set_timeline_selection(timeline_selection.first,timeline_selection.last)
+		gui_data.on_frames_changed()
 	end
 	on_frame_change = gui_data.on_frame_change
 	on_properties_changed = gui_data.on_properties_changed
+	on_selection_changed = gui_data.on_selection_changed
 end
 
 function _update()

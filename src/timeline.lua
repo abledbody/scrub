@@ -79,8 +79,9 @@ local function attach(self,accessors,el)
 	}
 
 	function el:align_buttons()
-		el.remove_button.x = (accessors.animator.frame_i-1)*8
-		el.insert_button.x = (accessors.animator.frame_i-1)*8+8
+		local sel_last = accessors.get_timeline_selection().last
+		el.remove_button.x = (sel_last-1)*8
+		el.insert_button.x = (sel_last-1)*8+8
 	end
 
 	el:align_buttons()

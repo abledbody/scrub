@@ -512,6 +512,9 @@ local function initialize(accessors)
 		on_properties_changed = function()
 			properties.container:populate()
 		end,
+		on_selection_changed = function()
+			timeline:align_buttons()
+		end,
 	}
 end
 
