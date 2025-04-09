@@ -20,10 +20,12 @@ local function attach(self,accessors,el)
 		local animator = accessors.animator
 		local durations = animation.duration
 
+		poke(0x5f36,0x2)
 		for i = 1,#durations do
-			local sprite = i == animator.frame_i and 4 or 5
-			spr(sprite,(i-1)*8,0)
+			local oval_func = i == animator.frame_i and ovalfill or oval
+			oval_func((i-1)*8+1,1,(i-1)*8+6,6,36)
 		end
+		poke(0x5f36,0x0)
 	end
 
 	function el.frames:drag(msg)
