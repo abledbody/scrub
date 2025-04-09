@@ -1,49 +1,65 @@
-local function attach_frame(self,el)
-	el = self:attach(el)
-
-	el.width,el.height = 8,8
-	function el:draw()
-		spr(4)
-	end
-
-	return el
-end
-
-local function attach_timeline(self,accessors,el)
+local function attach(self,accessors,el)
 	el = self:attach(el)
 
 	el.container = el:attach{
-		x = 0,
-		y = 0,
-		width = 9,
-		height = el.height,
-		items = {},
+		x = 2,
+		y = 2,
+		width = el.width-4,
+		height = el.height-4,
 	}
 
-	function el:populate()
-		local frame_count = #accessors.animator.anim.duration
-		local container = self.container
+	el.frames = el.container:attach{
+		x = 4,
+		y = el.container.height-8,
+		width = el.container.width-10,
+		height = 8,
+	}
 
-		for i = #container.items,1,-1 do
-			container:detach(container.items[i])
-			deli(container.items,i)
+	function el.frames:draw()
+		local animation = accessors.get_animation()
+		local animator = accessors.animator
+		local durations = animation.duration
+
+		for i = 1,#durations do
+			local sprite = i == animator.frame_i and 4 or 5
+			spr(sprite,(i-1)*8,0)
 		end
-
-		for i = 1,frame_count do
-			local item = attach_frame(self,{
-				x = (i-1)*9,
-				y = 0,
-			})
-
-			container.items[i] = item
-		end
-
-		container.width = frame_count*10
 	end
+
+	function el.frames:drag(msg)
+		accessors.set_frame(
+			mid(1,msg.mx\8+1,#accessors.get_animation().duration)
+		)
+	end
+
+	function el.container:fit()
+		self.width = #accessors.get_animation().duration*8+10
+	end
+
+	el.insert_button = el.container:attach{
+		x = 0,y = el.container.height-16,
+		width = 7,height = 7,
+		draw = function(_) spr(2,0,0) end,
+		click = function(_) accessors.insert_frame() end,
+	}
+
+	el.remove_button = el.container:attach{
+		x = 0,y = el.container.height-16,
+		width = 7,height = 7,
+		draw = function(_) spr(3,0,0) end,
+		click = function(_) accessors.remove_frame() end,
+	}
+
+	function el:align_buttons()
+		el.remove_button.x = (accessors.animator.frame_i-1)*8
+		el.insert_button.x = (accessors.animator.frame_i-1)*8+8
+	end
+
+	el:align_buttons()
 
 	return el
 end
 
 return {
-	attach_timeline = attach_timeline,
+	attach = attach,
 }

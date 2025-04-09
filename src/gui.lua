@@ -2,7 +2,12 @@ local Viewport = require"src/viewport"
 local Timeline = require"src/timeline"
 
 local BLINKER_SPEED <const> = 1*DT
-local PANEL_HEIGHT <const> = 60
+local PANEL_HEIGHT <const> = 80
+local ANIMATIONS_PANEL_WIDTH <const> = 100
+local VARIABLES_WIDTH <const> = 200
+local TIMELINE_HEIGHT <const> = 20
+local TRANSPORT_HEIGHT <const> = 17
+local TRANSPORT_WIDTH <const> = 13*4+4
 
 local blinker = 0
 
@@ -25,48 +30,87 @@ local function fill(self)
 	rectfill(0,0,self.width-1,self.height-1,col)
 end
 
---- @return userdata position Gets the position of an element in screenspace.
-local function get_position(self)
-	local pos = vec(self.x,self.y)
-	if not self.parent then return pos end
-	return pos+get_position(self.parent)
+local function border(self)
+	local col = self.col or 34
+	rect(0,0,self.width-1,self.height-1,col)
 end
 
---- @param el {get:fun():string,set:fun(string)}
+local function field_draw(self)
+	local has_keyboard_focus = self:has_keyboard_focus()
+		
+	local str = has_keyboard_focus and self.str or self:get()
+	
+	local fill_col = has_keyboard_focus and self.fill_col_focused or self.fill_col
+	local text_col = has_keyboard_focus and self.text_col_focused or self.text_col
+
+	rectfill(0,0,self.width-1,self.height-1,fill_col)
+
+	local offset = has_keyboard_focus and self.offset or 0
+	print(str,1-offset,1,text_col)
+	
+	if has_keyboard_focus and blinker < 0.5 then
+		local x = self.curs_pos-offset
+		line(x,1,x,8,text_col)
+	end
+
+	if self.label then
+		clip()
+		local ww = print(self.label,0,-1000)
+		print(self.label,-ww,1,text_col)
+	end
+end
+
+local function field_click(self)
+	self:set_keyboard_focus(true)
+	self.str = self:get()
+	self:update_cursor(#self.str)
+end
+
+local function field_update(self)
+	if not self:has_keyboard_focus() then return end
+
+	local first = string.sub(self.str,1,self.curs)
+	local last = string.sub(self.str,self.curs+1)
+	while (peektext()) do
+		local txt = readtext()
+		self.str = first..txt..last
+		self:update_cursor(self.curs+#txt)
+	end
+
+	if keyp("enter") then
+		if (type(self.set) == "function") then self:set(self.str) end
+		self:set_keyboard_focus(false)
+	end
+
+	if keyp("backspace") then
+		self.str = string.sub(first,1,self.curs-1)..last
+		self:update_cursor(self.curs-1)
+	end
+	if keyp("delete") then
+		self.str = first..string.sub(last,2)
+	end
+
+	if keyp("left") then
+		self:update_cursor(self.curs-1)
+	end
+	if keyp("right") then
+		self:update_cursor(self.curs+1)
+	end
+end
+
 local function attach_field(self,el)
+	-- Draw gets set during attach. I don't know why, but to be on the safe side,
+	-- we handle the other defaulted functions here too.
+	local draw = el.draw or field_draw
+	local click = el.click or field_click
+	local update = el.update or field_update
+
 	el = self:attach(el)
 	el.offset = 0
 	el.str = el:get()
-
-	function el:draw()
-		local has_keyboard_focus = self:has_keyboard_focus()
-		
-		local str = has_keyboard_focus and self.str or self:get()
-
-		rectfill(0,0,self.width-1,self.height-1,
-			has_keyboard_focus and self.focus_col or self.fill_col
-		)
-
-		local offset = has_keyboard_focus and self.offset or 0
-		print(str,1-offset,1,self.text_col)
-		
-		if has_keyboard_focus and blinker < 0.5 then
-			local x = self.curs_pos-offset
-			line(x,1,x,8,self.text_col)
-		end
-
-		if self.label then
-			clip()
-			local ww = print(self.label,0,-1000)
-			print(self.label,-ww,1,13)
-		end
-	end
-
-	function el:click()
-		self:set_keyboard_focus(true)
-		self.str = self:get()
-		self:update_cursor(#self.str)
-	end
+	el.draw = draw
+	el.click = click
+	el.update = update
 
 	function el:update_cursor(val)
 		self.curs = mid(0,val,#self.str)
@@ -83,187 +127,235 @@ local function attach_field(self,el)
 	end
 	el:update_cursor(#el.str)
 
-	function el:update()
-		if not self:has_keyboard_focus() then return end
-
-		local first = string.sub(self.str,1,self.curs)
-		local last = string.sub(self.str,self.curs+1)
-		while (peektext()) do
-			local txt = readtext()
-			self.str = first..txt..last
-			self:update_cursor(self.curs+#txt)
-		end
-
-		if keyp("enter") then
-			if (type(self.set) == "function") then self:set(self.str) end
-			self:set_keyboard_focus(false)
-		end
-
-		if keyp("backspace") then
-			self.str = string.sub(first,1,self.curs-1)..last
-			self:update_cursor(self.curs-1)
-		end
-		if keyp("delete") then
-			self.str = first..string.sub(last,2)
-		end
-
-		if keyp("left") then
-			self:update_cursor(self.curs-1)
-		end
-		if keyp("right") then
-			self:update_cursor(self.curs+1)
-		end
-	end
-
 	return el
 end
 
-local function attach_dropdown_label_button(self, el)
-	local el = self:attach(el)
-	el.hovering = false
-	el.hover_called = false
+local function attach_scrollbars(self,attribs)
+	local container = self
+	local bar_w = self.bar_w or 8
 
-	function el:update()
-		self.hovering = self.hover_called
-		self.hover_called = false
-	end
+	local attribs = attribs or {} 
 
-	function el:draw()
-		if self.hovering then
-			rectfill(0,0,self.width,self.height,35)
-		end
+	-- pick out only attributes relevant to scrollbar (autohide)
+	-- caller could adjust them after though -- to do: perhaps should just spill everything in attribs as starting values
+	local scrollbar = {
+		x = 0, justify = "right",
+		y = 0,
+		width = bar_w,
+		height = container.height,
+		height_rel = 1.0,
+		autohide = attribs.autohide,
+		bar_y = 0,
+		bar_h = 0,
+		cursor = "grab",
+		fgcol = attribs.fgcol,
+		bgcol = attribs.bgcol,
 
-		print(self.label,1,1,self.col)
-	end
+		update = function(self, msg)
+			local container = self.parent
+			local contents  = container.child[1]
+			local h0 = self.height
+			local h1 = contents.height
+			local bar_h = max(9, h0 / h1 * h0)\1  -- bar height; minimum 9 pixels
+			local emp_h = h0 - bar_h - 1          -- empty height (-1 for 1px boundary at bottom)
+			local max_y = max(0, contents.height - container.height)
 
-	function el:hover()
-		self.hover_called = true
-	end
+			self.scroll_spd = max_y / emp_h
+			if max_y > 0 then
+				self.bar_y = flr(- emp_h * contents.y / max_y)
+				self.bar_h = bar_h
+			else
+				self.bar_y = 0
+				self.bar_h = 0
+			end
 
-	return el
-end
+			if self.autohide then
+				self.hidden = contents.height <= container.height
+			end
 
-local function attach_button(self,el)
-	el = self:attach(el)
-	el.hovering = false
-	el.hover_called = false
+			-- hack: match update height same frame 
+			-- otherwise /almost/ works because gets squashed by virtue of height being relative to container, but a frame behind
+			-- (doesn't work in some cases! to do: nicer way to solve this?)
+			-- self.squash_to_clip = container.squash_to_clip 
 
-	function el:update()
-		self.hovering = self.hover_called
-		self.hover_called = false
-	end
+			-- 0.1.1e: always clamp
+			contents.x = mid(0, contents.x, container.width  - contents.width)
+			contents.y = mid(0, contents.y, container.height - contents.height)
 
-	function el:hover()
-		self.hover_called = true
-	end
+		end,
+		
+		draw = function(self, msg)
+			local bgcol = self.bgcol
+			local fgcol = self.fgcol
 
-	function el:draw()
-		if self.hovering then
-			for swap in all(self.pal_swaps) do
-				pal(swap[1],swap[2])
+			rectfill(0, 0, self.width-1, self.height-1, bgcol | (fgcol << 8)) 
+			if self.bar_h > 0 then
+				rectfill(1, self.bar_y+1, self.width-2, self.bar_y + self.bar_h-1, fgcol)
+			end
+
+			-- lil grip thing; same colour as background
+			local yy = self.bar_y + self.bar_h/2
+			line(2, yy-1, self.width-3, yy-1, bgcol)
+			line(2, yy+1, self.width-3, yy+1, bgcol)
+
+			-- rounded (to do: rrect)
+			pset(1,self.bar_y + 1,bgcol)
+			pset(self.width-2, self.bar_y + 1, bgcol)
+			pset(1,self.bar_y + self.bar_h-1,bgcol)
+			pset(self.width-2, self.bar_y + self.bar_h-1,bgcol)
+			
+		end,
+		drag = function(self, msg)
+			local content = self.parent.child[1]
+			content.y -= msg.dy * self.scroll_spd
+			-- clamp
+			content.y = mid(0, content.y, -max(0, content.height - container.height))
+
+		end,
+		click = function(self, msg)
+			local content = self.parent.child[1]
+			
+			-- click above / below to pageup / pagedown
+			if (msg.my < self.bar_y) then
+				content.y += self.parent.height
+			end
+			if (msg.my > self.bar_y + self.bar_h) then
+				content.y -= self.parent.height
 			end
 		end
+	}
 
-		spr(self.spr,0,0)
+	-- standard mousewheel support when attach scroll bar
+	-- speed: 32 pixels // to do: maybe should be a system setting?
+	function container:mousewheel(msg)
+		local content = self.child[1]
+		if not content then return end
 
-		if self.hovering then
-			for swap in all(self.pal_swaps) do
-				pal(swap[1],swap[1])
-			end
+		local old_x = content.x
+		local old_y = content.y
+
+		if (key("ctrl")) then
+			content.x += msg.wheel_y * 32 
+		else
+			content.y += msg.wheel_y * 32 
 		end
+
+		-- clamp
+		content.y = mid(0, content.y, -max(0, content.height - container.height))
+
+
+		-- 0.1.1e: consume event (e.g. for nested scrollables)
+		return true
+
+		-- experimental: consume only if scrolled
+		--if (old_x ~= content.x or old_y ~= content.y) return true 
+		
 	end
 
-	return el
+	return container:attach(scrollbar)
 end
 
-local function attach_removable_item(self,el)
-	el = self:attach(el)
-
-	local button = attach_dropdown_label_button(el,{
-		x = 0,y = 0,
-		width = el.width-10,height = el.height,
-		col = 7,
-		label = el.item_key,
-		menu = el.menu,
-		select = el.select,
-		item_key = el.item_key,
-	})
-
-	function button:click()
-		self:select(self.item_key)
-		self.menu.hidden = true
-	end
-
-	local remove_button = attach_button(el,{
-		x = button.width+1,y = 1,
-		width = 7,height = 7,
-		remove = el.remove,
-		menu = el.menu,
-		item_key = el.item_key,
-		pal_swaps = {{35,24}},
-		spr = 3,
-	})
-
-	function remove_button:click()
-		self:remove(self.item_key)
-		self.menu.container:populate()
-	end
-
-	return el
-end
-
-local function populate_mutable_list(self)
+local function populate(self)
+	assert(self.get,"populate() requires a get() function")
+	assert(self.factory,"populate() requires a factory() function")
+	
+	self.items = self.items or {}
 	for i=#self.items,1,-1 do
 		self:detach(self.items[i])
 		deli(self.items,i)
 	end
-	local item_keys = self:get()
 
-	self.height = (#item_keys+1)*10+2
+	local items = self:get()
 
-	for i,item_key in ipairs(item_keys) do
-		self.items[i] = attach_removable_item(self,{
-			x = 1,y = (i-1)*10+1,
-			width = self.width,height = 10,
-			select = self.select,
-			remove = self.remove,
-			menu = self.menu,
-			item_key = item_key
-		})
+	for i,item in ipairs(items) do
+		local value = self:factory(i,item)
+		assert(value,"factory must return a value")
+		self.items[i] = value
 	end
 
-	self.create_button.y = #item_keys*10+2
+	if self.height_equation then
+		self.height = self:height_equation(#items)
+	end
+	if self.width_equation then
+		self.width = self:width_equation(#items)
+	end
 end
 
-local function attach_mutable_dropdown(self,el)
+local function attach_properties(self,accessors,el)
 	el = self:attach(el)
 
-	el.container = el:attach{
-		x = 0,y = 0,
-		width = el.width-8,height = el.height,
-		get = el.get,
-		select = el.select,
-		remove = el.remove,
-		menu = el,
-		items = {},
+	el.selected_property = 1
+
+	el.list = el:attach{
+		x = 1,y = 1,
+		width = el.width-2,height = el.height-10,
 	}
 
-	function el.container:populate()
-		populate_mutable_list(self)
-		local max_height = ScreenSize.y-get_position(el).y
-		el.height = min(self.height,max_height)
-	end
+	el.container = el.list:attach{
+		x = 0,
+		y = 0,
+		width = el.list.width,
+		height = el.list.height,
+		populate = populate,
+		height_equation = function(_,len) return len*10 end,
+		get = accessors.get_property_strings,
+		factory = function(self,i,item)
+			local key = item.key
 
-	el.container.create_button = attach_button(el.container,{
-		x = el.container.width-8,y = 1,
-		width = 7,height = 7,
-		click = function() el.create() el.container:populate() end,
-		spr = 2,
-		pal_swaps = {{35,24}},
-	})
+			local row = self:attach{
+				x = 0,y = (i-1)*10,
+				width = self.width-9,height = 10,
+			}
 
-	el:attach_scrollbars()
-	
+			local field_width = (row.width-8)*0.5
+
+			attach_field(row,{
+				x = 0,y = 0,
+				width = field_width,height = 10,
+				fill_col = 0,
+				text_col = 7,
+				fill_col_focused = 19,
+				text_col_focused = 7,
+				get = function() return key end,
+				set = function(_,value) accessors.rename_property(key,value) end,
+			})
+
+			attach_field(row,{
+				x = field_width,y = 0,
+				width = field_width,height = 10,
+				fill_col = 0,
+				text_col = 7,
+				fill_col_focused = 19,
+				text_col_focused = 7,
+				get = function() return item.value end,
+				set = function(_,value) accessors.set_property_by_string(key,value) end,
+			})
+
+			if key ~= "duration" then
+				row:attach{
+					x = row.width-7,y = 2,
+					width = 7,height = 7,
+					draw = function(self) spr(3) end,
+					click = function(self) accessors.remove_property(key) end,
+				}
+			end
+
+			return row
+		end
+	}
+
+	el.add_button = el:attach{
+		x = 1,y = el.height-8,
+		width = 8,height = 8,
+		draw = function() spr(2,0,0) end,
+		click = function() accessors.create_property() end,
+	}
+
+	el.draw = draw_panel
+
+	el.list:attach_scrollbars()
+	el.container:populate()
+
 	return el
 end
 
@@ -279,78 +371,147 @@ local function initialize(accessors)
 
 	local viewport = Viewport.attach_viewport(gui,accessors,{
 		x=0,y=0,
-		width = ScreenSize.x,
+		width = ScreenSize.x-ANIMATIONS_PANEL_WIDTH,
 		height = ScreenSize.y-PANEL_HEIGHT
 	})
 
-	local panel = gui:attach{
-		x=0,y=ScreenSize.y-PANEL_HEIGHT,
-		width = 480,height = PANEL_HEIGHT,
+	local animations_panel = gui:attach{
+		x = viewport.width,y = 0,
+		width = ANIMATIONS_PANEL_WIDTH,height = viewport.height,
+		col = Lightest,
+		draw = border,
 	}
 
-	local toolbar = panel:attach{
-		x=0,y=0,
-		width = ScreenSize.x,height = 12,
-		draw = draw_panel,
+	local animation_list = animations_panel:attach{
+		x = 2,y = 2,
+		width = animations_panel.width-4,height = animations_panel.height-16,
 	}
 
-	local main_panel = panel:attach{
-		x=0,
-		y=toolbar.y+toolbar.height,
-		width = ScreenSize.x,
-		height = PANEL_HEIGHT-toolbar.height-1,
-		draw = draw_panel,
-	}
-
-	local timeline = Timeline.attach_timeline(main_panel,accessors,{
-		x=2,y=2,
-		width = ScreenSize.x-4,height = 8,
-	})
-
-	timeline:populate()
-
-	local animation_key_field = attach_field(toolbar,{
-		x=1,y=1,
-		width = 90,height = 10,
-		fill_col = 0,
-		focus_col = 19,
-		text_col = 7,
-		get = function() return accessors.get_animation_key() end,
-		set = function(_,key) accessors.set_animation_key(key) end,
-	})
-
-	local animation_dropdown
-
-	local dropdown_button = attach_button(toolbar,{
-		x=animation_key_field.x+animation_key_field.width+1,
-		y=animation_key_field.y+1,
-		width = 8,height = 8,
-		
-		click = function(self)
-			animation_dropdown.hidden = not animation_dropdown.hidden
-			if not animation_dropdown.hidden then
-				animation_dropdown.container:populate()
-			end
-		end,
-		spr = 1,
-		pal_swaps = {{35,24}}
-	})
-
-	animation_dropdown = attach_mutable_dropdown(panel,{
-		x = dropdown_button.x+dropdown_button.width, y = dropdown_button.y,
-		width = 150,
-		height = 10,
-		draw = draw_panel,
+	local animation_list_container = animation_list:attach{
+		x = 0,y = 0,
+		width = animation_list.width-9,height = animation_list.height,
+		populate = populate,
+		height_equation = function(_,len) return len*12 end,
 		get = accessors.get_animation_keys,
-		select = function(_,key) accessors.set_animation(key) end,
-		create = function(_) accessors.create_animation() end,
-		remove = function(_,key) accessors.remove_animation(key) end,
-		hidden = true,
+		factory = function(self,i,item)
+			local row = self:attach{
+				x = 0,y = (i-1)*12,
+				width = self.width,height = 12,
+				draw = function(self)
+					if accessors.get_animation_key() == item then
+						rect(0,0,self.width-1,self.height-1,Lightest)
+					end
+				end,
+			}
+
+			attach_field(row,{
+				x = 1,y = 1,
+				width = row.width-11,height = row.height-2,
+				item = item,
+				fill_col = Darkest,
+				text_col = Lightest,
+				fill_col_focused = Lightest,
+				text_col_focused = Darkest,
+				
+				get = function(self) return self.item end,
+				set = function(self,value)
+					accessors.set_animation_key(value)
+					self.item = value
+				end,
+				click = function(self)
+					if accessors.get_animation_key() == self.item then
+						field_click(self)
+					else
+						accessors.set_animation(self.item)
+					end
+				end,
+			})
+
+			row:attach{
+				x = row.width-9,y = 2,
+				width = 7,height = 7,
+				draw = function(self)
+					pal(7,Lightest) pal(1,Darkest)
+					spr(11,0,0)
+					pal(7,7) pal(1,1)
+				end,
+				click = function(self) accessors.remove_animation(item) end,
+			}
+
+			return row
+		end
+	}
+
+	attach_scrollbars(animation_list,{
+		fgcol = Darkest,
+		bgcol = Lightest,
 	})
+
+	animation_list_container:populate()
+
+	local add_animation_button = animations_panel:attach{
+		x = 2,y = animations_panel.height-9,
+		width = 8,height = 8,
+		col = Lightest,
+		draw = function(self)
+			pal(7,Lightest) pal(1,Darkest)
+			spr(10,0,0)
+			pal(7,7) pal(1,1)
+		end,
+		click = function(_) accessors.create_animation() end,
+	}
+
+	local panel = gui:attach{
+		x = 0,y = viewport.height,
+		width = ScreenSize.x,height = PANEL_HEIGHT,
+		draw = draw_panel,
+	}
+
+	local properties = attach_properties(panel,accessors,{
+		x = ScreenSize.x-VARIABLES_WIDTH,y = 0,
+		width = VARIABLES_WIDTH,height = panel.height,
+	})
+	
+	local timeline = Timeline.attach(panel,accessors,{
+		x = 0,y = panel.height-TIMELINE_HEIGHT,
+		width = ScreenSize.x-properties.width,height = TIMELINE_HEIGHT,
+		draw = draw_panel,
+	})
+	
+	local transport = panel:attach{
+		x = 0,y = timeline.y-TRANSPORT_HEIGHT,
+		width = TRANSPORT_WIDTH,height = TRANSPORT_HEIGHT,
+		draw = draw_panel,
+	}
+
+	local play_button = transport:attach{
+		x = 3,y = 3,
+		width = 11,height = 11,
+		draw = function(self)
+			draw_panel(self)
+			local sprite = accessors.get_playing() and 7 or 6
+			spr(sprite,2,2)
+		end,
+		click = function(self)
+			accessors.set_playing(not accessors.get_playing())
+		end,
+	}
 
 	return {
 		gui = gui,
-		panel = panel
+		on_animations_changed = function()
+			animation_list_container:populate()
+		end,
+		on_frames_changed = function()
+			timeline.container:fit()
+		end,
+		on_frame_change = function()
+			timeline:align_buttons()
+			properties.container:populate()
+		end,
+		on_properties_changed = function()
+			properties.container:populate()
+		end,
 	}
 end
 
