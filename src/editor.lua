@@ -20,6 +20,7 @@ local gui_data
 local gfx --- @type [{bmp:userdata}]
 local palette --- @type userdata
 local playing --- @type boolean
+local timeline_selection --- @type {first:integer,last:integer}
 
 local on_animations_changed --- @type function
 local on_frames_changed --- @type function
@@ -179,10 +180,10 @@ end
 
 local function get_property_strings()
 	local properties = {}
-	for k in pairs(animations[current_anim_key]) do
+	for k,v in pairs(animations[current_anim_key]) do
 		if type(k) ~= "string" then goto continue end
 		
-		local value = animator[k]
+		local value = v[animator.frame_i]
 		local value_type = type(value)
 		if value_type == "userdata" then
 			local str = "("
@@ -304,6 +305,13 @@ local function get_sprite(anim_spr)
 	return sprite and sprite.bmp
 end
 
+local function set_timeline_selection(first,last)
+	local length = #animations[current_anim_key].duration
+	first = mid(1,first,length)
+	last = mid(1,last,length)
+	timeline_selection = {first = first,last = last}
+end
+
 -- Picotron hooks
 function _init()
 	window{
@@ -325,6 +333,7 @@ function _init()
 	current_anim_key = next(animations) or "new_1"
 	animator = Animation.new_animator(animations[current_anim_key])
 	playing = false
+	timeline_selection = {first = 1,last = 1}
 
 	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
@@ -363,6 +372,8 @@ function _init()
 
 		get_playing = function() return playing end,
 		set_playing = function(value) playing = value end,
+		get_timeline_selection = function() return timeline_selection end,
+		set_timeline_selection = set_timeline_selection,
 
 		get_sprite = get_sprite,
 
@@ -374,7 +385,10 @@ function _init()
 	)
 
 	on_animations_changed = gui_data.on_animations_changed
-	on_frames_changed = gui_data.on_frames_changed
+	on_frames_changed = function()
+		gui_data.on_frames_changed()
+		set_timeline_selection(timeline_selection.first,timeline_selection.last)
+	end
 	on_frame_change = gui_data.on_frame_change
 	on_properties_changed = gui_data.on_properties_changed
 end

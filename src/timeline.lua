@@ -20,18 +20,29 @@ local function attach(self,accessors,el)
 		local animator = accessors.animator
 		local durations = animation.duration
 
-		poke(0x5f36,0x2)
+		local selection = accessors.get_timeline_selection()
+		local sel_first,sel_last = selection.first,selection.last
+		if sel_first > sel_last then
+			sel_first,sel_last = sel_last,sel_first
+		end
+
+		rectfill((sel_first-1)*8,0,(sel_last-1)*8+7,7,35)
 		for i = 1,#durations do
 			local oval_func = i == animator.frame_i and ovalfill or oval
 			oval_func((i-1)*8+1,1,(i-1)*8+6,6,36)
 		end
-		poke(0x5f36,0x0)
 	end
 
 	function el.frames:drag(msg)
-		accessors.set_frame(
-			mid(1,msg.mx\8+1,#accessors.get_animation().duration)
-		)
+		local i = mid(1,msg.mx\8+1,#accessors.get_animation().duration)
+		accessors.set_frame(i)
+		
+		if key("shift") then
+			local sel_first = accessors.get_timeline_selection().first
+			accessors.set_timeline_selection(sel_first,i)
+		else
+			accessors.set_timeline_selection(i,i)
+		end
 	end
 
 	function el.container:fit()
@@ -42,14 +53,29 @@ local function attach(self,accessors,el)
 		x = 0,y = el.container.height-16,
 		width = 7,height = 7,
 		draw = function(_) spr(2,0,0) end,
-		click = function(_) accessors.insert_frame() end,
+		click = function(_)
+			accessors.insert_frame()
+
+			local i = accessors.animator.frame_i
+			if key("shift") then
+				local sel_first = accessors.get_timeline_selection().first
+				accessors.set_timeline_selection(sel_first,i)
+			else
+				accessors.set_timeline_selection(i,i)
+			end
+		end,
 	}
 
 	el.remove_button = el.container:attach{
 		x = 0,y = el.container.height-16,
 		width = 7,height = 7,
 		draw = function(_) spr(3,0,0) end,
-		click = function(_) accessors.remove_frame() end,
+		click = function(_)
+			accessors.remove_frame()
+			
+			local i = accessors.animator.frame_i
+			accessors.set_timeline_selection(i,i)
+		end,
 	}
 
 	function el:align_buttons()
