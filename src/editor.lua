@@ -21,6 +21,7 @@ local gfx --- @type [{bmp:userdata}]
 local palette --- @type userdata
 local playing --- @type boolean
 local timeline_selection --- @type {first:integer,last:integer}
+local lock_selection_to_frame --- @type boolean
 
 local on_animations_changed --- @type function
 local on_frames_changed --- @type function
@@ -39,7 +40,7 @@ local function load_working_file(item_1)
 		notify("Failed to load working file.")
 		item_1 = nil
 	end
-	animations = item_1 or {animation_1 = {spr = {0}, duration = {0.1}}}
+	animations = item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}}
 end
 
 --- Sets the palette for the given range of scanlines.
@@ -124,11 +125,25 @@ local function remove_frame()
 	set_frame(sel_first)
 end
 
+local function set_timeline_selection(first,last)
+	local length = #animations[current_anim_key].duration
+	first = mid(1,first,length)
+	last = mid(1,last,length)
+
+	if first == timeline_selection.first
+		and last == timeline_selection.last
+	then return end
+
+	timeline_selection = {first = first,last = last}
+	on_selection_changed()
+end
+
 --- Sets the current animation to the one with the given key.
 --- @param key string The key of the animation to switch to.
 local function set_animation(key)
 	animator.anim = animations[key]
 	current_anim_key = key
+	set_timeline_selection(1,1)
 	set_frame(1)
 	on_frames_changed()
 end
@@ -153,7 +168,7 @@ local function create_animation()
 		anim_name = "new_"..animation_count
 	end
 
-	animations[anim_name] = {spr = {0}, duration = {0.1}}
+	animations[anim_name] = {sprite = {0}, duration = {0.1}}
 	set_animation(anim_name)
 
 	on_animations_changed()
@@ -312,25 +327,17 @@ local function remove_property(key)
 	on_properties_changed()
 end
 
+local function set_playing(value)
+	if value then lock_selection_to_frame = true end
+	playing = value
+end
+
 --- Fetches a sprite bitmap off the 0.gfx file by index.
 --- @param anim_spr integer The index of the sprite to fetch.
 --- @return userdata sprite_data The sprite bitmap data.
 local function get_sprite(anim_spr)
 	local sprite = gfx[anim_spr]
 	return sprite and sprite.bmp
-end
-
-local function set_timeline_selection(first,last)
-	local length = #animations[current_anim_key].duration
-	first = mid(1,first,length)
-	last = mid(1,last,length)
-
-	if first == timeline_selection.first
-		and last == timeline_selection.last
-	then return end
-
-	timeline_selection = {first = first,last = last}
-	on_selection_changed()
 end
 
 -- Picotron hooks
@@ -392,9 +399,12 @@ function _init()
 		remove_property = remove_property,
 
 		get_playing = function() return playing end,
-		set_playing = function(value) playing = value end,
+		set_playing = set_playing,
 		get_timeline_selection = function() return timeline_selection end,
 		set_timeline_selection = set_timeline_selection,
+
+		get_lock_selection_to_frame = function() return lock_selection_to_frame end,
+		set_lock_selection_to_frame = function(value) lock_selection_to_frame = value end,
 
 		get_sprite = get_sprite,
 
@@ -421,6 +431,9 @@ function _update()
 		local last_frame = animator.frame_i
 		animator:advance(DT)
 		if animator.frame_i ~= last_frame then
+			if lock_selection_to_frame then
+				set_timeline_selection(animator.frame_i,animator.frame_i)
+			end
 			on_frame_change()
 		end
 	end

@@ -134,7 +134,7 @@ local function attach_scrollbars(self,attribs)
 	local container = self
 	local bar_w = self.bar_w or 8
 
-	local attribs = attribs or {} 
+	local attribs = attribs or {}
 
 	-- pick out only attributes relevant to scrollbar (autohide)
 	-- caller could adjust them after though -- to do: perhaps should just spill everything in attribs as starting values

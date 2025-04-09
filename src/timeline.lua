@@ -26,7 +26,7 @@ local function attach(self,accessors,el)
 			sel_first,sel_last = sel_last,sel_first
 		end
 
-		rectfill((sel_first-1)*8,0,(sel_last-1)*8+7,7,35)
+		rectfill((sel_first-1)*8,0,(sel_last-1)*8+7,7,24)
 		for i = 1,#durations do
 			local oval_func = i == animator.frame_i and ovalfill or oval
 			oval_func((i-1)*8+1,1,(i-1)*8+6,6,36)
@@ -35,7 +35,9 @@ local function attach(self,accessors,el)
 
 	function el.frames:drag(msg)
 		local i = mid(1,msg.mx\8+1,#accessors.get_animation().duration)
-		accessors.set_frame(i)
+		if not accessors.get_playing() then
+			accessors.set_frame(i)
+		end
 		
 		if key("shift") then
 			local sel_first = accessors.get_timeline_selection().first
@@ -43,6 +45,7 @@ local function attach(self,accessors,el)
 		else
 			accessors.set_timeline_selection(i,i)
 		end
+		accessors.set_lock_selection_to_frame(false)
 	end
 
 	function el.container:fit()
