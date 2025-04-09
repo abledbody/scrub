@@ -1,11 +1,11 @@
-local function attach_timeline(self,accessors,el)
+local function attach(self,accessors,el)
 	el = self:attach(el)
 
 	el.container = el:attach{
-		x = 1,
-		y = 1,
-		width = el.width-2,
-		height = el.height-2,
+		x = 2,
+		y = 2,
+		width = el.width-4,
+		height = el.height-4,
 	}
 
 	el.frames = el.container:attach{
@@ -61,5 +61,5 @@ local function attach_timeline(self,accessors,el)
 end
 
 return {
-	attach_timeline = attach_timeline,
+	attach = attach,
 }

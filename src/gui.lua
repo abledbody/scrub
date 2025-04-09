@@ -5,7 +5,7 @@ local BLINKER_SPEED <const> = 1*DT
 local PANEL_HEIGHT <const> = 80
 local ANIMATIONS_PANEL_WIDTH <const> = 100
 local VARIABLES_WIDTH <const> = 200
-local TIMELINE_HEIGHT <const> = 24
+local TIMELINE_HEIGHT <const> = 20
 local TRANSPORT_HEIGHT <const> = 17
 local TRANSPORT_WIDTH <const> = 13*4+4
 
@@ -268,12 +268,77 @@ local function populate(self)
 	local items = self:get()
 
 	for i,item in ipairs(items) do
-		self.items[i] = self:factory(i,item)
+		local value = self:factory(i,item)
+		assert(value,"factory must return a value")
+		self.items[i] = value
 	end
 
 	if self.height_equation then
 		self.height = self:height_equation(#items)
 	end
+	if self.width_equation then
+		self.width = self:width_equation(#items)
+	end
+end
+
+local function attach_properties(self,accessors,el)
+	el = self:attach(el)
+
+	el.selected_property = 1
+
+	el.list = el:attach{
+		x = 1,y = 1,
+		width = el.width-2,height = el.height-2,
+	}
+
+	el.container = el.list:attach{
+		x = 0,
+		y = 0,
+		width = el.list.width,
+		height = el.list.height,
+		populate = populate,
+		height_equation = function(_,len) return len*10 end,
+		get = accessors.get_property_strings,
+		factory = function(self,i,item)
+			local key = item.key
+
+			local row = self:attach{
+				x = 0,y = (i-1)*10,
+				width = self.width-9,height = 10,
+			}
+
+			attach_field(row,{
+				x = 0,y = 0,
+				width = row.width*0.5,height = 10,
+				fill_col = 0,
+				text_col = 7,
+				fill_col_focused = 19,
+				text_col_focused = 7,
+				get = function() return key end,
+				set = function(_,value) accessors.rename_property(key,value) end,
+			})
+
+			attach_field(row,{
+				x = row.width*0.5,y = 0,
+				width = row.width*0.5,height = 10,
+				fill_col = 0,
+				text_col = 7,
+				fill_col_focused = 19,
+				text_col_focused = 7,
+				get = function() return item.value end,
+				set = function(_,value) accessors.set_property_by_string(key,value) end,
+			})
+
+			return row
+		end
+	}
+
+	el.draw = draw_panel
+
+	el.list:attach_scrollbars()
+	el.container:populate()
+
+	return el
 end
 
 local function initialize(accessors)
@@ -384,15 +449,14 @@ local function initialize(accessors)
 		draw = draw_panel,
 	}
 
-	local variables = panel:attach{
+	local properties = attach_properties(panel,accessors,{
 		x = ScreenSize.x-VARIABLES_WIDTH,y = 0,
 		width = VARIABLES_WIDTH,height = panel.height,
-		draw = draw_panel,
-	}
-
-	local timeline = Timeline.attach_timeline(panel,accessors,{
+	})
+	
+	local timeline = Timeline.attach(panel,accessors,{
 		x = 0,y = panel.height-TIMELINE_HEIGHT,
-		width = ScreenSize.x-variables.width,height = TIMELINE_HEIGHT,
+		width = ScreenSize.x-properties.width,height = TIMELINE_HEIGHT,
 		draw = draw_panel,
 	})
 	
@@ -425,6 +489,10 @@ local function initialize(accessors)
 		end,
 		on_frame_change = function()
 			timeline:align_buttons()
+			properties.container:populate()
+		end,
+		on_properties_changed = function()
+			properties.container:populate()
 		end,
 	}
 end
