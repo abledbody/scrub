@@ -20,7 +20,7 @@ local function attach_viewport(self,accessors,el)
 		local spr_w,spr_h = spr_dat:attribs()
 		local pivot = accessors.animator.pivot or vec(0,0)
 		
-		sspr(spr_dat,0,0,spr_w,spr_h,-pivot.x*self.zoom,-pivot.y*self.zoom,spr_w*self.zoom,spr_h*self.zoom)
+		sspr(spr_dat,0,0,spr_w,spr_h,(-0.5-pivot.x)*self.zoom+0.5,(-0.5-pivot.y)*self.zoom+0.5,spr_w*self.zoom,spr_h*self.zoom)
 		
 		if not accessors.get_playing() then
 			pal(7,Lightest)

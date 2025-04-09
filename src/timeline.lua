@@ -33,20 +33,7 @@ local function attach(self,accessors,el)
 		end
 	end
 
-	function el.frames:drag(msg)
-		local i = mid(1,msg.mx\8+1,#accessors.get_animation().duration)
-		if not accessors.get_playing() then
-			accessors.set_frame(i)
-		end
-		
-		if key("shift") then
-			local sel_first = accessors.get_timeline_selection().first
-			accessors.set_timeline_selection(sel_first,i)
-		else
-			accessors.set_timeline_selection(i,i)
-		end
-		accessors.set_lock_selection_to_frame(false)
-	end
+	function el.frames:drag(msg) accessors.select_frame(msg.mx\8+1) end
 
 	function el.container:fit()
 		self.width = #accessors.get_animation().duration*8+10

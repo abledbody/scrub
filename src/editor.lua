@@ -88,9 +88,36 @@ end
 
 -- Accessors
 
+local function set_timeline_selection(first,last)
+	local length = #animations[current_anim_key].duration
+	first = mid(1,first,length)
+	last = mid(1,last,length)
+
+	if first == timeline_selection.first
+		and last == timeline_selection.last
+	then return end
+
+	timeline_selection = {first = first,last = last}
+	on_selection_changed()
+end
+
 local function set_frame(frame_i)
 	animator:reset(mid(1,frame_i,#animations[current_anim_key].duration))
 	on_frame_change()
+end
+
+local function select_frame(frame_i)
+	if not playing then
+		set_frame(frame_i)
+	end
+	
+	if key("shift") then
+		local sel_first = timeline_selection.first
+		set_timeline_selection(sel_first,frame_i)
+	else
+		set_timeline_selection(frame_i,frame_i)
+	end
+	lock_selection_to_frame = false
 end
 
 local function insert_frame()
@@ -102,7 +129,7 @@ local function insert_frame()
 		add(v,v[sel_last],sel_last+1)
 	end
 
-	set_frame(sel_last+1)
+	select_frame(sel_last+1)
 	on_frames_changed()
 end
 
@@ -123,19 +150,6 @@ local function remove_frame()
 
 	on_frames_changed()
 	set_frame(sel_first)
-end
-
-local function set_timeline_selection(first,last)
-	local length = #animations[current_anim_key].duration
-	first = mid(1,first,length)
-	last = mid(1,last,length)
-
-	if first == timeline_selection.first
-		and last == timeline_selection.last
-	then return end
-
-	timeline_selection = {first = first,last = last}
-	on_selection_changed()
 end
 
 --- Sets the current animation to the one with the given key.
@@ -402,9 +416,7 @@ function _init()
 		set_playing = set_playing,
 		get_timeline_selection = function() return timeline_selection end,
 		set_timeline_selection = set_timeline_selection,
-
-		get_lock_selection_to_frame = function() return lock_selection_to_frame end,
-		set_lock_selection_to_frame = function(value) lock_selection_to_frame = value end,
+		select_frame = select_frame,
 
 		get_sprite = get_sprite,
 
@@ -431,11 +443,33 @@ function _update()
 		local last_frame = animator.frame_i
 		animator:advance(DT)
 		if animator.frame_i ~= last_frame then
-			if lock_selection_to_frame then
-				set_timeline_selection(animator.frame_i,animator.frame_i)
-			end
 			on_frame_change()
 		end
+	end
+
+	if not gui_data.gui:get_keyboard_focus_element() then
+		local duration_count = #animations[current_anim_key].duration
+		if keyp("left") then
+			set_playing(false)
+			select_frame((animator.frame_i-2)%duration_count+1)
+		end
+		if keyp("right") then
+			set_playing(false)
+			select_frame((animator.frame_i%duration_count)+1)
+		end
+		if keyp("space") then
+			set_playing(not playing)
+		end
+		if keyp("insert") then
+			insert_frame()
+		end
+		if keyp("delete") then
+			remove_frame()
+		end
+	end
+	
+	if lock_selection_to_frame then
+		set_timeline_selection(animator.frame_i,animator.frame_i)
 	end
 end
 
