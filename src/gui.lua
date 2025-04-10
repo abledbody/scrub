@@ -4,8 +4,8 @@ local Timeline = require"src/timeline"
 local BLINKER_SPEED <const> = 1*DT
 local PANEL_HEIGHT <const> = 80
 local ANIMATIONS_PANEL_WIDTH <const> = 100
-local VARIABLES_WIDTH <const> = 200
-local TIMELINE_HEIGHT <const> = 20
+local PROPERTIES_WIDTH <const> = 200
+local TIMELINE_HEIGHT <const> = 29
 local TRANSPORT_HEIGHT <const> = 17
 local TRANSPORT_WIDTH <const> = 13*4+4
 
@@ -130,47 +130,52 @@ local function attach_field(self,el)
 	return el
 end
 
-local function attach_scrollbars(self,attribs)
+function attach_better_scrollbars(self,attribs)
 	local container = self
-	local bar_w = self.bar_w or 8
-
+	local bar_short = self.bar_short or 8
+	
 	local attribs = attribs or {}
-
+	local widthwise = attribs.widthwise or false -- Eh, why not?
+	
 	-- pick out only attributes relevant to scrollbar (autohide)
 	-- caller could adjust them after though -- to do: perhaps should just spill everything in attribs as starting values
 	local scrollbar = {
-		x = 0, justify = "right",
-		y = 0,
-		width = bar_w,
-		height = container.height,
-		height_rel = 1.0,
+		x = 0, justify = not widthwise and "right",
+		y = 0, vjustify = widthwise and "bottom",
+		widthwise = widthwise,
+		width = widthwise and container.width or bar_short,
+		height = widthwise and bar_short or container.height,
+		long_rel = 1.0,
 		autohide = attribs.autohide,
-		bar_y = 0,
-		bar_h = 0,
+		bar_offset = 0,
+		bar_length = 0,
 		cursor = "grab",
-		fgcol = attribs.fgcol,
-		bgcol = attribs.bgcol,
+		fgcol = attribs.fgcol or 35,
+		bgcol = attribs.bgcol or 33,
 
 		update = function(self, msg)
 			local container = self.parent
 			local contents  = container.child[1]
-			local h0 = self.height
-			local h1 = contents.height
-			local bar_h = max(9, h0 / h1 * h0)\1  -- bar height; minimum 9 pixels
-			local emp_h = h0 - bar_h - 1          -- empty height (-1 for 1px boundary at bottom)
-			local max_y = max(0, contents.height - container.height)
+			local l0 = self.widthwise and self.width or self.height
+			local l1 = self.widthwise and contents.width or contents.height
+			local l2 = self.widthwise and container.width or container.height
+			local bar_length = max(9, l0 / l1 * l0)\1  -- bar length; minimum 9 pixels
+			local emp_l = l0 - bar_length - 1          -- empty length (-1 for 1px boundary at bottom)
+			local max_offset = max(0, l1 - l2)
 
-			self.scroll_spd = max_y / emp_h
-			if max_y > 0 then
-				self.bar_y = flr(- emp_h * contents.y / max_y)
-				self.bar_h = bar_h
+			self.scroll_spd = max_offset / emp_l
+
+			local contents_offset = self.widthwise and contents.x or contents.y
+			if max_offset > 0 then
+				self.bar_offset = flr(-emp_l * contents_offset / max_offset)
+				self.bar_length = bar_length
 			else
-				self.bar_y = 0
-				self.bar_h = 0
+				self.bar_offset = 0
+				self.bar_length = 0
 			end
 
 			if self.autohide then
-				self.hidden = contents.height <= container.height
+				self.hidden = l1 <= l2
 			end
 
 			-- hack: match update height same frame 
@@ -187,40 +192,65 @@ local function attach_scrollbars(self,attribs)
 		draw = function(self, msg)
 			local bgcol = self.bgcol
 			local fgcol = self.fgcol
-
+			
 			rectfill(0, 0, self.width-1, self.height-1, bgcol | (fgcol << 8)) 
-			if self.bar_h > 0 then
-				rectfill(1, self.bar_y+1, self.width-2, self.bar_y + self.bar_h-1, fgcol)
+			if self.bar_length > 0 then
+				if self.widthwise then
+					rectfill(self.bar_offset+1, 1, self.bar_offset + self.bar_length-1, self.height-2, fgcol)
+				else
+					rectfill(1, self.bar_offset+1, self.width-2, self.bar_offset + self.bar_length-1, fgcol)
+				end
 			end
 
 			-- lil grip thing; same colour as background
-			local yy = self.bar_y + self.bar_h/2
-			line(2, yy-1, self.width-3, yy-1, bgcol)
-			line(2, yy+1, self.width-3, yy+1, bgcol)
+			local ll = self.bar_offset + self.bar_length/2
+			if self.widthwise then
+				line(ll-1, 2, ll-1, self.height-3, bgcol)
+				line(ll+1, 2, ll+1, self.height-3, bgcol)
+				
+				pset(self.bar_offset + 1, 1, bgcol)
+				pset(self.bar_offset + self.bar_length-1, 1, bgcol)
+				pset(self.bar_offset + 1, self.height-2, bgcol)
+				pset(self.bar_offset + self.bar_length-1, self.height-2, bgcol)
+			else
+				line(2, ll-1, self.width-3, ll-1, bgcol)
+				line(2, ll+1, self.width-3, ll+1, bgcol)
 
-			-- rounded (to do: rrect)
-			pset(1,self.bar_y + 1,bgcol)
-			pset(self.width-2, self.bar_y + 1, bgcol)
-			pset(1,self.bar_y + self.bar_h-1,bgcol)
-			pset(self.width-2, self.bar_y + self.bar_h-1,bgcol)
+				pset(1,self.bar_offset + 1,bgcol)
+				pset(self.width-2, self.bar_offset + 1, bgcol)
+				pset(1,self.bar_offset + self.bar_length-1,bgcol)
+				pset(self.width-2, self.bar_offset + self.bar_length-1,bgcol)
+			end
 			
 		end,
 		drag = function(self, msg)
 			local content = self.parent.child[1]
-			content.y -= msg.dy * self.scroll_spd
-			-- clamp
-			content.y = mid(0, content.y, -max(0, content.height - container.height))
+			local delta = (widthwise and msg.dx or msg.dy) * self.scroll_spd
+			if self.widthwise then
+				content.x -= delta
+				content.x = mid(0, content.x, -max(0, content.width - container.width))
+			else
+				content.y -= delta
+				content.y = mid(0, content.y, -max(0, content.height - container.height))
+			end
 
 		end,
 		click = function(self, msg)
 			local content = self.parent.child[1]
 			
 			-- click above / below to pageup / pagedown
-			if (msg.my < self.bar_y) then
-				content.y += self.parent.height
+			local mouse_delta = self.widthwise and msg.mx or msg.my
+			local sign = 0
+			if (mouse_delta < self.bar_offset) then
+				sign += 1
 			end
-			if (msg.my > self.bar_y + self.bar_h) then
-				content.y -= self.parent.height
+			if (mouse_delta > self.bar_offset + self.bar_length) then
+				sign -= 1
+			end
+			if self.widthwise then
+				content.x += self.parent.width*sign
+			else
+				content.y += self.parent.height*sign
 			end
 		end
 	}
@@ -231,9 +261,6 @@ local function attach_scrollbars(self,attribs)
 		local content = self.child[1]
 		if not content then return end
 
-		local old_x = content.x
-		local old_y = content.y
-
 		if (key("ctrl")) then
 			content.x += msg.wheel_y * 32 
 		else
@@ -242,7 +269,7 @@ local function attach_scrollbars(self,attribs)
 
 		-- clamp
 		content.y = mid(0, content.y, -max(0, content.height - container.height))
-
+		content.x = mid(0, content.x, -max(0, content.width - container.width))
 
 		-- 0.1.1e: consume event (e.g. for nested scrollables)
 		return true
@@ -353,7 +380,7 @@ local function attach_properties(self,accessors,el)
 
 	el.draw = draw_panel
 
-	el.list:attach_scrollbars()
+	attach_better_scrollbars(el.list)
 	el.container:populate()
 
 	return el
@@ -442,7 +469,7 @@ local function initialize(accessors)
 		end
 	}
 
-	attach_scrollbars(animation_list,{
+	attach_better_scrollbars(animation_list,{
 		fgcol = Darkest,
 		bgcol = Lightest,
 	})
@@ -463,13 +490,13 @@ local function initialize(accessors)
 
 	local panel = gui:attach{
 		x = 0,y = viewport.height,
-		width = ScreenSize.x,height = PANEL_HEIGHT,
-		draw = draw_panel,
+		width = ScreenSize.x-PROPERTIES_WIDTH,height = PANEL_HEIGHT,
+		draw = function(self) draw_panel(self) spr(24,self.width*0.5-32,4) end,
 	}
 
-	local properties = attach_properties(panel,accessors,{
-		x = ScreenSize.x-VARIABLES_WIDTH,y = 0,
-		width = VARIABLES_WIDTH,height = panel.height,
+	local properties = attach_properties(gui,accessors,{
+		x = ScreenSize.x-PROPERTIES_WIDTH,y = viewport.height,
+		width = PROPERTIES_WIDTH,height = panel.height,
 	})
 	
 	local timeline = Timeline.attach(panel,accessors,{
