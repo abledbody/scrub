@@ -18,7 +18,8 @@ local function attach_viewport(self,accessors,el)
 		local spr_dat = accessors.get_sprite(anim_spr)
 		if not spr_dat then return end
 		local spr_w,spr_h = spr_dat:attribs()
-		local pivot = accessors.animator.pivot or vec(0,0)
+		local pivot = accessors.animator.pivot
+		if type(pivot) ~= "userdata" or #pivot < 2 then pivot = vec(0,0) end
 		
 		sspr(spr_dat,0,0,spr_w,spr_h,(-0.5-pivot.x)*self.zoom+0.5,(-0.5-pivot.y)*self.zoom+0.5,spr_w*self.zoom,spr_h*self.zoom)
 		
