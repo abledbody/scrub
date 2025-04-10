@@ -160,6 +160,7 @@ local function set_animation(key)
 	set_timeline_selection(1,1)
 	set_frame(1)
 	on_frames_changed()
+	on_properties_changed()
 end
 
 --- Renames the current animation to the given name.
@@ -259,6 +260,8 @@ end
 local function set_property_by_string(key,value)
 	local animation = animations[current_anim_key]
 
+	local whitespaceless = value:gsub("%s+","")
+
 	local number = tonumber(value)
 	if number then
 		if key == "duration" and number <= 0 then return end
@@ -267,13 +270,23 @@ local function set_property_by_string(key,value)
 	end
 	if key == "duration" then return end
 
-	if value == "nil" then
+	if whitespaceless == "nil" or value == "" then
 		value = nil --- @type any
 		goto type_found
 	end
 
+	if whitespaceless == "true" then
+		value = true --- @type any
+		goto type_found
+	end
+	
+	if whitespaceless == "false" then
+		value = false --- @type any
+		goto type_found
+	end
+
 	do
-		local delimiter_contents = value:gsub("%s+",""):match("^%((.+)%)$")
+		local delimiter_contents = whitespaceless:match("^%((.+)%)$")
 		if not delimiter_contents then goto skip_vector end
 
 		local components = {}
@@ -348,9 +361,9 @@ end
 
 --- Fetches a sprite bitmap off the 0.gfx file by index.
 --- @param anim_spr integer The index of the sprite to fetch.
---- @return userdata sprite_data The sprite bitmap data.
+--- @return userdata? sprite_data The sprite bitmap data.
 local function get_sprite(anim_spr)
-	local sprite = gfx[anim_spr]
+	local sprite = gfx and gfx[anim_spr]
 	return sprite and sprite.bmp
 end
 

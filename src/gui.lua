@@ -64,6 +64,7 @@ local function field_click(self)
 	self:set_keyboard_focus(true)
 	self.str = self:get()
 	self:update_cursor(#self.str)
+	readtext(true)
 end
 
 local function field_update(self)
@@ -534,13 +535,13 @@ local function initialize(accessors)
 		end,
 		on_frame_change = function()
 			timeline:align_buttons()
-			properties.container:populate()
 		end,
 		on_properties_changed = function()
 			properties.container:populate()
 		end,
 		on_selection_changed = function()
 			timeline:align_buttons()
+			properties.container:populate()
 		end,
 	}
 end
