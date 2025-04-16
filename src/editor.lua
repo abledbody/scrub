@@ -196,16 +196,25 @@ local function initialize_events()
 	animation.events = events
 end
 
-local function scrub_events()
+local function clean_events()
 	local animation = animations[current_anim_key]
 	local events = animation.events
 	if not events then return end
 
+	local event_found = false
 	for i = 1,#animation.duration do
-		if events[i] and next(events[i]) then return end
+		if events[i] and next(events[i]) then event_found = true break end
 	end
 
-	animation.events = nil
+	if event_found then
+		for i = 1,#animation.duration do
+			if not events[i] then
+				events[i] = {}
+			end
+		end
+	else
+		animation.events = nil
+	end
 end
 
 -- Accessors
@@ -276,7 +285,7 @@ local function remove_frame()
 		end
 	end
 
-	scrub_events()
+	clean_events()
 	playing = false
 
 	select_frame(sel_first)
@@ -418,8 +427,8 @@ end
 
 local function create_event()
 	local animation = animations[current_anim_key]
+	if not animation.events then initialize_events() end
 	local events = animation.events
-	if not events then initialize_events() end
 
 	local key = next_name("new",function(key)
 		for i in iterate_selection() do
@@ -450,7 +459,7 @@ local function remove_event(key)
 		end
 	end
 
-	scrub_events()
+	clean_events()
 
 	on_events_changed()
 end
@@ -535,6 +544,7 @@ function _init()
 	animator = Animation.new_animator(animations[current_anim_key])
 	playing = false
 	timeline_selection = {first = 1,last = 1}
+	clean_events()
 
 	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
