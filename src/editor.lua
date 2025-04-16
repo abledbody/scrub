@@ -302,9 +302,9 @@ local function set_animation(key)
 	animator.anim = animations[key]
 	current_anim_key = key
 	set_timeline_selection(1,1)
+	on_selection_changed()
 	set_frame(1)
 	on_frames_changed()
-	on_properties_changed()
 end
 
 --- Renames the current animation to the given name.
