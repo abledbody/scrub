@@ -3,6 +3,7 @@
 --- correspond to a particular frame. If any data is at frame index -1, it will
 --- be used for every frame of the animation.
 --- @field duration [number] An array indicating how long it takes for each frame to elapse. Does not support index -1.
+--- @field events [table<string,any>]? A table of events that occur at each frame. The keys are the event names, and the values are the data associated with that event.
 
 --- Advances the time of the animator by dt.
 --- @param self Animator The animator.
@@ -19,9 +20,12 @@ local function advance(self,dt)
 		self.frame_i = 1
 		self.ended = true
 	end
+	
+	local events = {}
 
 	self.frame_t += dt
 	local duration = durations[self.frame_i] or durations[1]
+
 	while self.frame_t > duration do
 		self.frame_t -= duration
 
@@ -32,8 +36,13 @@ local function advance(self,dt)
 			self.ended = true
 		end
 
+		local frame_events = anim.events and anim.events[self.frame_i]
+		if frame_events then add(events,frame_events) end
+
 		duration = durations[self.frame_i]
 	end
+
+	self.events = events
 end
 
 --- Fetches the data in the current frame of the current animation for the given key.
@@ -59,9 +68,12 @@ local function reset(self,frame)
 	self.frame_t = 0
 	self.frame_advances = 0
 	self.ended = false
+	self.events = {}
+	local frame_events = self.anim.events and self.anim.events[self.frame_i]
+	if frame_events then self.events[1] = frame_events end
 end
 
-local m_animator = {
+local c_animator = {
 	__index = function(self,key)
 		return key ~= "anim" and fetch(self,key)
 	end
@@ -77,18 +89,20 @@ local function new_animator(anim)
 	--- @field frame_t number The time that has elapsed since entering the current frame in seconds.
 	--- @field frame_advances integer How many times the frame index has incremented during the last call to `advance`.
 	--- @field ended boolean Whether or not the last call to `advance` advanced past the end of the animation.
-	--- @field [any] any Any value which is present in the current animation and frame, with a key that doesn't match any of Animator's fields or methods.
+	--- @field events [table<string,any>] ? A table of all events that have occurred since the last call to `advance`.
+	--- @field [string] any Any value which is present in the current animation and frame, with a key that doesn't match any of Animator's fields or methods.
 	local animator = {
 		anim = anim,
 		frame_i = 1,
 		frame_t = 0,
 		frame_advances = 0,
 		ended = false,
+		events = {},
 
 		advance = advance,
 		reset = reset,
 	}
-	return setmetatable(animator,m_animator)
+	return setmetatable(animator,c_animator)
 end
 
 --- Generates an animation by a rule function.

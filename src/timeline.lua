@@ -23,6 +23,7 @@ local function attach(self,accessors,el)
 	el.container.frames = el.container:attach{
 		x = 4,
 		y = 8,
+		cursor = "grab",
 		width = el.container.width-4,
 		height = 8,
 	}
@@ -50,6 +51,7 @@ local function attach(self,accessors,el)
 	el.insert_button = el.container:attach{
 		x = 0,y = 0,
 		width = 7,height = 7,
+		cursor = "pointer",
 		draw = function(_) spr(2,0,0) end,
 		click = function(_)
 			accessors.insert_frame()
@@ -67,6 +69,7 @@ local function attach(self,accessors,el)
 	el.remove_button = el.container:attach{
 		x = 0,y = 0,
 		width = 7,height = 7,
+		cursor = "pointer",
 		draw = function(_) spr(3,0,0) end,
 		click = function(_)
 			accessors.remove_frame()

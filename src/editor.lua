@@ -28,6 +28,7 @@ local on_frames_changed --- @type function
 local on_frame_change --- @type function
 local on_properties_changed --- @type function
 local on_selection_changed --- @type function
+local on_events_changed --- @type function
 
 --- @return Animation
 local function save_working_file()
@@ -86,6 +87,127 @@ local function find_binary_cols()
 	end
 end
 
+local function remove_trailing_zeros(str)
+	local s = str:find("%.0+$")
+	if s then return str:sub(1,s-1) end
+	return str
+end
+
+---@param str string
+---@return any
+local function string_to_value(str)
+	assert(type(str) == "string","Expected string, got "..type(str))
+
+	local whitespaceless = str:gsub("%s+","")
+	local value
+
+	local number = tonumber(whitespaceless)
+	if number then return number end
+	if whitespaceless == "nil" or value == "" then return nil end
+	if whitespaceless == "true" then return true end
+	if whitespaceless == "false" then return false end
+
+	do
+		local delimiter_contents = whitespaceless:match("^%((.+)%)$")
+		if not delimiter_contents then goto skip_vector end
+
+		local components = {}
+		local i = 1
+		local sep = false
+		while i <= #delimiter_contents do
+			local s,e
+			if sep then
+				s,e = delimiter_contents:find(",",i)
+			else
+				s,e = delimiter_contents:find("[+-]?%d+%.%d+",i)
+				if not s or s ~= i then
+					s,e = delimiter_contents:find("[+-]?%d+",i)
+				end
+
+				local num = tonumber(delimiter_contents:sub(s,e))
+				if not num then goto skip_vector end
+				add(components,num)
+			end
+			if not s or s ~= i then goto skip_vector end
+			i = e+1
+			sep = not sep
+		end
+		
+		return vec(unpack(components))
+	end
+	::skip_vector::
+
+	return str
+end
+
+--- @param value any
+--- @return string
+local function value_to_string(value)
+	local value_type = type(value)
+
+	if value_type ~= "userdata" then
+		return tostr(value)
+	end
+
+	local str = "("
+	for i = 0,#value-1 do
+		str = str..remove_trailing_zeros(tostr(value[i]))
+		if i < #value-1 then str = str.."," end
+	end
+	str = str..")"
+	return str
+end
+
+local function iterate_selection()
+	local sel_first,sel_last = timeline_selection.first,timeline_selection.last
+	if sel_first > sel_last then
+		sel_first,sel_last = sel_last,sel_first
+	end
+
+	local i = sel_first
+	return function()
+		if i > sel_last then return nil end
+		local frame = i
+		i += 1
+		return frame
+	end
+end
+
+---@param basis string
+---@param fetch fun(str:string):any
+local function next_name(basis,fetch)
+	local i = 1
+	local name = basis.."_1"
+	while fetch(name) do
+		i += 1
+		name = basis.."_"..i
+	end
+	return name
+end
+
+local function initialize_events()
+	local animation = animations[current_anim_key]
+	if animation.events then return end
+
+	local events = {}
+	for i = 1,#animation.duration do
+		events[i] = {}
+	end
+	animation.events = events
+end
+
+local function scrub_events()
+	local animation = animations[current_anim_key]
+	local events = animation.events
+	if not events then return end
+
+	for i = 1,#animation.duration do
+		if events[i] and next(events[i]) then return end
+	end
+
+	animation.events = nil
+end
+
 -- Accessors
 
 local function set_timeline_selection(first,last)
@@ -121,12 +243,17 @@ local function select_frame(frame_i)
 end
 
 local function insert_frame()
+	if playing then return end
 	local animation = animations[current_anim_key]
 
 	local sel_last = timeline_selection.last
 
-	for _,v in pairs(animation) do
-		add(v,v[sel_last],sel_last+1)
+	for k,v in pairs(animation) do
+		if k == "events" then
+			add(v,{},sel_last+1)
+		else
+			add(v,v[sel_last],sel_last+1)
+		end
 	end
 
 	select_frame(sel_last+1)
@@ -134,8 +261,9 @@ local function insert_frame()
 end
 
 local function remove_frame()
+	if playing then return end
 	local animation = animations[current_anim_key]
-
+	
 	local sel_first,sel_last = timeline_selection.first,timeline_selection.last
 	if sel_first > sel_last then
 		sel_first,sel_last = sel_last,sel_first
@@ -148,8 +276,15 @@ local function remove_frame()
 		end
 	end
 
+	scrub_events()
+	playing = false
+
+	select_frame(sel_first)
+	-- Have to trigger this manually, because technically the selection is still
+	-- pointing to the same indices.
+	on_selection_changed()
+
 	on_frames_changed()
-	set_frame(sel_first)
 end
 
 --- Sets the current animation to the one with the given key.
@@ -176,12 +311,7 @@ end
 --- Creates a new animation with a unique name and sets it as the current animation.
 --- @return string anim_name The name of the newly created animation.
 local function create_animation()
-	local animation_count = 1
-	local anim_name = "new_1"
-	while animations[anim_name] do
-		animation_count += 1
-		anim_name = "new_"..animation_count
-	end
+	local anim_name = next_name("new",function(key) return animations[key] end)
 
 	animations[anim_name] = {sprite = {0}, duration = {0.1}}
 	set_animation(anim_name)
@@ -210,44 +340,23 @@ local function remove_animation(key)
 	on_animations_changed()
 end
 
-local function remove_trailing_zeros(str)
-	local s = str:find("%.0+$")
-	if s then return str:sub(1,s-1) end
-	return str
-end
-
 local function get_property_strings()
 	local properties = {}
 	local source_frame = timeline_selection.first
 	for k,v in pairs(animations[current_anim_key]) do
-		if type(k) ~= "string" then goto continue end
-		
-		local value = v[source_frame]
-		local value_type = type(value)
-		if value_type == "userdata" then
-			local str = "("
-			for i = 0,#value-1 do
-				str = str..remove_trailing_zeros(tostr(value[i]))
-				if i < #value-1 then str = str.."," end
-			end
-			str = str..")"
-			add(properties,{key = k,value = str})
-		else
-			add(properties,{key = k,value = tostr(value)})
+		if k ~= "events" then
+			add(properties,{key = k,value = value_to_string(v[source_frame])})
 		end
-
-
-		::continue::
 	end
 	return properties
 end
 
 local function rename_property(key,new_key)
 	local animation = animations[current_anim_key]
-	if not animation[key]
-		or key == "duration"
-		or animation[new_key]
-	then return end
+	if not animation[key] or key == "events" then return end
+	if key == "duration" then notify("You cannot rename the duration property.") return end
+	if new_key == "events" then notify("'events' is a reserved property name.") return end
+	if animation[new_key] then notify("The "..new_key.." property already exists.") return end
 	
 	animation[new_key] = animation[key]
 	animation[key] = nil
@@ -255,88 +364,27 @@ local function rename_property(key,new_key)
 	on_properties_changed()
 end
 
---- @param key any
---- @param value string
-local function set_property_by_string(key,value)
+--- @param key string
+--- @param str string
+local function set_property_by_string(key,str)
+	local value = string_to_value(str)
+	if key == "duration" and (type(value) ~= "number" or value <= 0) then
+		notify("Duration must be a positive number.")
+		return
+	end
+
 	local animation = animations[current_anim_key]
-
-	local whitespaceless = value:gsub("%s+","")
-
-	local number = tonumber(value)
-	if number then
-		if key == "duration" and number <= 0 then return end
-		value = number --- @type any
-		goto type_found
-	end
-	if key == "duration" then return end
-
-	if whitespaceless == "nil" or value == "" then
-		value = nil --- @type any
-		goto type_found
-	end
-
-	if whitespaceless == "true" then
-		value = true --- @type any
-		goto type_found
-	end
-	
-	if whitespaceless == "false" then
-		value = false --- @type any
-		goto type_found
-	end
-
-	do
-		local delimiter_contents = whitespaceless:match("^%((.+)%)$")
-		if not delimiter_contents then goto skip_vector end
-
-		local components = {}
-		local i = 1
-		local sep = false
-		while i <= #delimiter_contents do
-			local s,e
-			if sep then
-				s,e = delimiter_contents:find(",",i)
-			else
-				s,e = delimiter_contents:find("[+-]?%d+%.%d+",i)
-				if not s or s ~= i then
-					s,e = delimiter_contents:find("[+-]?%d+",i)
-				end
-
-				local num = tonumber(delimiter_contents:sub(s,e))
-				if not num then goto skip_vector end
-				add(components,num)
-			end
-			if not s or s ~= i then goto skip_vector end
-			i = e+1
-			sep = not sep
-		end
-
-		value = vec(unpack(components)) --- @type any
-		goto type_found
-	end
-	::skip_vector::
-	
-	::type_found::
-	
-	local sel_first,sel_last = timeline_selection.first,timeline_selection.last
-	if sel_first > sel_last then
-		sel_first,sel_last = sel_last,sel_first
-	end
-	for i = sel_first,sel_last do
+	for i in iterate_selection() do
 		animation[key][i] = value
 	end
+
 	on_properties_changed()
 end
 
 local function create_property()
 	local animation = animations[current_anim_key]
 
-	local property_count = 1
-	local key = "new_1"
-	while animation[key] do
-		key = "new_"..property_count
-		property_count += 1
-	end
+	local key = next_name("new",function(key) return animation[key] end)
 
 	animation[key] = {}
 
@@ -345,13 +393,111 @@ local function create_property()
 end
 
 local function remove_property(key)
-	if key == "duration" then return end
+	if key == "duration" or key == "events" then return end
 
 	local animation = animations[current_anim_key]
 	if not animation[key] then return end
 	animation[key] = nil
 
 	on_properties_changed()
+end
+
+local function get_event_strings()
+	local events = animations[current_anim_key].events
+	if not events then return {} end
+
+	local event_strings = {}
+	local frame_events = events[timeline_selection.first]
+	if not frame_events then return {} end
+
+	for k,v in pairs(frame_events) do
+		add(event_strings,{key = k,value = value_to_string(v)})
+	end
+	return event_strings
+end
+
+local function create_event()
+	local animation = animations[current_anim_key]
+	local events = animation.events
+	if not events then initialize_events() end
+
+	local key = next_name("new",function(key)
+		for i in iterate_selection() do
+			local frame_events = events[i]
+			if frame_events and frame_events[key] then return true end
+		end
+	end)
+
+	for i in iterate_selection() do
+		if not events[i] then events[i] = {} end
+		local frame_events = events[i]
+		frame_events[key] = true
+	end
+
+	on_events_changed()
+	return key
+end
+
+--- @param key string
+local function remove_event(key)
+	local events = animations[current_anim_key].events
+	if not events then return end
+
+	for i in iterate_selection() do
+		local frame_events = events[i]
+		if frame_events and frame_events[key] then
+			frame_events[key] = nil
+		end
+	end
+
+	scrub_events()
+
+	on_events_changed()
+end
+
+--- @param key string
+--- @param new_key string
+local function rename_event(key,new_key)
+	local events = animations[current_anim_key].events
+	if not events then return end
+
+	-- Double loop to prevent mutation if the rename fails.
+	for i in iterate_selection() do
+		local frame_events = events[i]
+		if frame_events and frame_events[key] and frame_events[new_key] then
+			notify("The "..new_key.." event already exists somewhere in the selection.")
+			return
+		end
+	end
+
+	for i in iterate_selection() do
+		local frame_events = events[i]
+		if frame_events and frame_events[key] then
+			frame_events[new_key] = frame_events[key]
+			frame_events[key] = nil
+		end
+	end
+
+	on_events_changed()
+end
+
+--- @param key string
+--- @param str string
+local function set_event_by_string(key,str)
+	local events = animations[current_anim_key].events
+	if not events then return end
+
+	local value = string_to_value(str)
+	if value == nil then return end
+
+	for i in iterate_selection() do
+		local frame_events = events[i]
+		if frame_events and frame_events[key] then
+			frame_events[key] = value
+		end
+	end
+
+	on_events_changed()
 end
 
 local function set_playing(value)
@@ -425,6 +571,12 @@ function _init()
 		create_property = create_property,
 		remove_property = remove_property,
 
+		get_event_strings = get_event_strings,
+		rename_event = rename_event,
+		set_event_by_string = set_event_by_string,
+		create_event = create_event,
+		remove_event = remove_event,
+
 		get_playing = function() return playing end,
 		set_playing = set_playing,
 		get_timeline_selection = function() return timeline_selection end,
@@ -448,6 +600,7 @@ function _init()
 	on_frame_change = gui_data.on_frame_change
 	on_properties_changed = gui_data.on_properties_changed
 	on_selection_changed = gui_data.on_selection_changed
+	on_events_changed = gui_data.on_events_changed
 end
 
 function _update()

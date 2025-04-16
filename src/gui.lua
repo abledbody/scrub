@@ -2,9 +2,9 @@ local Viewport = require"src/viewport"
 local Timeline = require"src/timeline"
 
 local BLINKER_SPEED <const> = 1*DT
-local PANEL_HEIGHT <const> = 80
+local PANEL_HEIGHT <const> = 100
 local ANIMATIONS_PANEL_WIDTH <const> = 100
-local PROPERTIES_WIDTH <const> = 200
+local PROPERTIES_WIDTH <const> = 160
 local TIMELINE_HEIGHT <const> = 29
 local TRANSPORT_HEIGHT <const> = 17
 local TRANSPORT_WIDTH <const> = 13*4+4
@@ -112,6 +112,7 @@ local function attach_field(self,el)
 	el.draw = draw
 	el.click = click
 	el.update = update
+	el.cursor = "pointer"
 
 	function el:update_cursor(val)
 		self.curs = mid(0,val,#self.str)
@@ -309,14 +310,14 @@ local function populate(self)
 	end
 end
 
-local function attach_properties(self,accessors,el)
+local function attach_dictionary(self,accessors,el)
 	el = self:attach(el)
 
 	el.selected_property = 1
 
 	el.list = el:attach{
 		x = 1,y = 1,
-		width = el.width-2,height = el.height-10,
+		width = el.width-2,height = el.height-13,
 	}
 
 	el.container = el.list:attach{
@@ -324,9 +325,16 @@ local function attach_properties(self,accessors,el)
 		y = 0,
 		width = el.list.width,
 		height = el.list.height,
+		
 		populate = populate,
 		height_equation = function(_,len) return len*10 end,
-		get = accessors.get_property_strings,
+
+		get = el.get_dictionary,
+		set_key = el.set_key,
+		set_value = el.set_value,
+		get_removable = el.get_removable,
+		remove = el.remove,
+
 		factory = function(self,i,item)
 			local key = item.key
 
@@ -345,7 +353,7 @@ local function attach_properties(self,accessors,el)
 				fill_col_focused = 19,
 				text_col_focused = 7,
 				get = function() return key end,
-				set = function(_,value) accessors.rename_property(key,value) end,
+				set = function(_,value) self.set_key(key,value) end,
 			})
 
 			attach_field(row,{
@@ -356,15 +364,16 @@ local function attach_properties(self,accessors,el)
 				fill_col_focused = 19,
 				text_col_focused = 7,
 				get = function() return item.value end,
-				set = function(_,value) accessors.set_property_by_string(key,value) end,
+				set = function(_,value) self.set_value(key,value) end,
 			})
 
-			if key ~= "duration" then
+			if self.get_removable and self.get_removable(key) then
 				row:attach{
 					x = row.width-7,y = 2,
 					width = 7,height = 7,
+					cursor = "pointer",
 					draw = function(self) spr(3) end,
-					click = function(self) accessors.remove_property(key) end,
+					click = function() self.remove(key) end,
 				}
 			end
 
@@ -373,13 +382,25 @@ local function attach_properties(self,accessors,el)
 	}
 
 	el.add_button = el:attach{
-		x = 1,y = el.height-8,
+		x = el.width-17,y = el.height-9,
 		width = 8,height = 8,
+		cursor = "pointer",
 		draw = function() spr(2,0,0) end,
-		click = function() accessors.create_property() end,
+		click = function() el.create() end,
 	}
 
-	el.draw = draw_panel
+	el:attach{
+		x = 2,y = el.height-9,
+		width = el.add_button.x-3,height = 8,
+		label = el.label,
+		col = el.col,
+		draw = function(self) print(self.label,0,0,36) end,
+	}
+
+	function el:draw()
+		draw_panel(self)
+		line(2,el.height-11,self.width-11,el.height-11,33)
+	end
 
 	attach_better_scrollbars(el.list)
 	el.container:populate()
@@ -458,6 +479,7 @@ local function initialize(accessors)
 			row:attach{
 				x = row.width-9,y = 2,
 				width = 7,height = 7,
+				cursor = "pointer",
 				draw = function(self)
 					pal(7,Lightest) pal(1,Darkest)
 					spr(11,0,0)
@@ -481,6 +503,7 @@ local function initialize(accessors)
 		x = 2,y = animations_panel.height-9,
 		width = 8,height = 8,
 		col = Lightest,
+		cursor = "pointer",
 		draw = function(self)
 			pal(7,Lightest) pal(1,Darkest)
 			spr(10,0,0)
@@ -491,22 +514,17 @@ local function initialize(accessors)
 
 	local panel = gui:attach{
 		x = 0,y = viewport.height,
-		width = ScreenSize.x-PROPERTIES_WIDTH,height = PANEL_HEIGHT,
+		width = ScreenSize.x-PROPERTIES_WIDTH*2,height = PANEL_HEIGHT-TIMELINE_HEIGHT,
 		draw = function(self) draw_panel(self) spr(24,self.width*0.5-32,4) end,
 	}
-
-	local properties = attach_properties(gui,accessors,{
-		x = ScreenSize.x-PROPERTIES_WIDTH,y = viewport.height,
-		width = PROPERTIES_WIDTH,height = panel.height,
-	})
 	
-	local timeline = Timeline.attach(panel,accessors,{
-		x = 0,y = panel.height-TIMELINE_HEIGHT,
-		width = ScreenSize.x-properties.width,height = TIMELINE_HEIGHT,
+	local timeline = Timeline.attach(gui,accessors,{
+		x = 0,y = ScreenSize.y-TIMELINE_HEIGHT,
+		width = ScreenSize.x,height = TIMELINE_HEIGHT,
 		draw = draw_panel,
 	})
 	
-	local transport = panel:attach{
+	local transport = gui:attach{
 		x = 0,y = timeline.y-TRANSPORT_HEIGHT,
 		width = TRANSPORT_WIDTH,height = TRANSPORT_HEIGHT,
 		draw = draw_panel,
@@ -515,6 +533,7 @@ local function initialize(accessors)
 	local play_button = transport:attach{
 		x = 3,y = 3,
 		width = 11,height = 11,
+		cursor = "pointer",
 		draw = function(self)
 			draw_panel(self)
 			local sprite = accessors.get_playing() and 7 or 6
@@ -524,6 +543,30 @@ local function initialize(accessors)
 			accessors.set_playing(not accessors.get_playing())
 		end,
 	}
+
+	local properties = attach_dictionary(gui,accessors,{
+		x = ScreenSize.x-PROPERTIES_WIDTH,y = viewport.height,
+		width = PROPERTIES_WIDTH,height = panel.height,
+		label = "Properties",
+		get_dictionary = accessors.get_property_strings,
+		set_key = accessors.rename_property,
+		set_value = accessors.set_property_by_string,
+		get_removable = function(key) return key ~= "duration" end,
+		create = accessors.create_property,
+		remove = accessors.remove_property,
+	})
+
+	local events = attach_dictionary(gui,accessors,{
+		x = ScreenSize.x-PROPERTIES_WIDTH*2,y = viewport.height,
+		width = PROPERTIES_WIDTH,height = panel.height,
+		label = "Events",
+		get_dictionary = accessors.get_event_strings,
+		set_key = accessors.rename_event,
+		set_value = accessors.set_event_by_string,
+		get_removable = function() return true end,
+		create = accessors.create_event,
+		remove = accessors.remove_event,
+	})
 
 	return {
 		gui = gui,
@@ -539,9 +582,13 @@ local function initialize(accessors)
 		on_properties_changed = function()
 			properties.container:populate()
 		end,
+		on_events_changed = function()
+			events.container:populate()
+		end,
 		on_selection_changed = function()
 			timeline:align_buttons()
 			properties.container:populate()
+			events.container:populate()
 		end,
 	}
 end
