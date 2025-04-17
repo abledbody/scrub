@@ -68,9 +68,7 @@ local function reset(self,frame)
 	self.frame_t = 0
 	self.frame_advances = 0
 	self.ended = false
-	self.events = {}
-	local frame_events = self.anim.events and self.anim.events[self.frame_i]
-	if frame_events then self.events[1] = frame_events end
+	self.events = {self.anim.events and self.anim.events[self.frame_i]}
 end
 
 local c_animator = {
@@ -89,7 +87,7 @@ local function new_animator(anim)
 	--- @field frame_t number The time that has elapsed since entering the current frame in seconds.
 	--- @field frame_advances integer How many times the frame index has incremented during the last call to `advance`.
 	--- @field ended boolean Whether or not the last call to `advance` advanced past the end of the animation.
-	--- @field events [table<string,any>] ? A table of all events that have occurred since the last call to `advance`.
+	--- @field events [table<string,any>] A table of all events that have occurred since the last call to `advance`.
 	--- @field [string] any Any value which is present in the current animation and frame, with a key that doesn't match any of Animator's fields or methods.
 	local animator = {
 		anim = anim,
