@@ -17,7 +17,7 @@ local animator --- @type Animator
 local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
 local gui_data
-local gfx_cache --- @type table<string, [{bmp:userdata}]>
+local gfx_cache --- @type table<number, [{bmp:userdata}]>
 local palette --- @type userdata
 local playing --- @type boolean
 local timeline_selection --- @type {first:integer,last:integer}
@@ -329,14 +329,6 @@ local function create_animation()
 	return anim_name
 end
 
---- Helper function to create sprite reference string for specific gfx file.
---- @param gfx_file string|number The gfx file number (e.g., 1 for "1.gfx")
---- @param sprite_index number The sprite index within that file
---- @return string sprite_ref The formatted sprite reference
-local function make_sprite_ref(gfx_file, sprite_index)
-	return tostr(gfx_file) .. ":" .. tostr(sprite_index)
-end
-
 --- Removes the animation with the given key.
 --- @param key string The key of the animation to remove.
 local function remove_animation(key)
@@ -523,48 +515,35 @@ local function set_playing(value)
 end
 
 --- Loads a gfx file into the cache if not already loaded.
---- @param gfx_file string The gfx file name (without .gfx extension).
+--- @param gfx_file_index number The gfx file index (0 for 0.gfx, 1 for 1.gfx, etc.)
 --- @return [{bmp:userdata}]? gfx_data The loaded gfx data or nil if failed.
-local function load_gfx_file(gfx_file)
-	if gfx_cache[gfx_file] then
-		return gfx_cache[gfx_file]
+local function load_gfx_file(gfx_file_index)
+	if gfx_cache[gfx_file_index] then
+		return gfx_cache[gfx_file_index]
 	end
 	
-	local gfx_data = fetch("/ram/cart/gfx/" .. gfx_file .. ".gfx")
+	local gfx_data = fetch("/ram/cart/gfx/" .. gfx_file_index .. ".gfx")
 	if gfx_data then
-		gfx_cache[gfx_file] = gfx_data
-	else
-		-- Log a warning for missing files (but don't crash)
-		printh("Warning: Could not load gfx file: " .. gfx_file .. ".gfx")
+		gfx_cache[gfx_file_index] = gfx_data
 	end
 	return gfx_data
 end
 
---- Fetches a sprite bitmap from the specified gfx file by index.
---- @param anim_spr integer|string The sprite reference. Can be a number (uses 0.gfx) or "file:index" format.
+--- Fetches a sprite bitmap by index, automatically loading the correct .gfx file.
+--- Sprites 0-255 are in 0.gfx, 256-511 are in 1.gfx, etc.
+--- @param anim_spr integer The sprite index to fetch.
 --- @return userdata? sprite_data The sprite bitmap data.
 local function get_sprite(anim_spr)
-	local gfx_file = "0"  -- Default to 0.gfx for backward compatibility
-	local sprite_index = anim_spr
+	if type(anim_spr) ~= "number" then return nil end
 	
-	-- Parse file:index format
-	if type(anim_spr) == "string" then
-		local file, index = anim_spr:match("^([^:]+):(%d+)$")
-		if file and index then
-			gfx_file = file
-			sprite_index = tonumber(index)
-		else
-			-- If string doesn't match file:index format, treat as invalid
-			return nil
-		end
-	elseif type(anim_spr) ~= "number" then
-		return nil
-	end
+	-- Calculate which .gfx file and local index within that file
+	local gfx_file_index = anim_spr // 256
+	local local_sprite_index = anim_spr % 256
 	
-	local gfx_data = load_gfx_file(gfx_file)
+	local gfx_data = load_gfx_file(gfx_file_index)
 	if not gfx_data then return nil end
 	
-	local sprite = gfx_data[sprite_index]
+	local sprite = gfx_data[local_sprite_index]
 	return sprite and sprite.bmp
 end
 
@@ -601,8 +580,8 @@ function _init()
 
 	gfx_cache = {}
 	
-	-- Load the default 0.gfx file for backward compatibility
-	load_gfx_file("0")
+	-- Load the default 0.gfx file
+	load_gfx_file(0)
 	
 	local accessors = {
 		set_frame = set_frame,
@@ -643,7 +622,6 @@ function _init()
 		select_frame = select_frame,
 
 		get_sprite = get_sprite,
-		make_sprite_ref = make_sprite_ref,
 
 		animator = animator,
 	}
