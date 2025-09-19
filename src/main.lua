@@ -17,7 +17,7 @@ local animator --- @type Animator
 local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
 local gui_data
-local gfx --- @type [{bmp:userdata}]
+local gfx_cache --- @type table<string, [{bmp:userdata}]>
 local palette --- @type userdata
 local playing --- @type boolean
 local timeline_selection --- @type {first:integer,last:integer}
@@ -514,11 +514,49 @@ local function set_playing(value)
 	playing = value
 end
 
---- Fetches a sprite bitmap off the 0.gfx file by index.
---- @param anim_spr integer The index of the sprite to fetch.
+--- Loads a gfx file into the cache if not already loaded.
+--- @param gfx_file string The gfx file name (without .gfx extension).
+--- @return [{bmp:userdata}]? gfx_data The loaded gfx data or nil if failed.
+local function load_gfx_file(gfx_file)
+	if gfx_cache[gfx_file] then
+		return gfx_cache[gfx_file]
+	end
+	
+	local gfx_data = fetch("/ram/cart/gfx/" .. gfx_file .. ".gfx")
+	if gfx_data then
+		gfx_cache[gfx_file] = gfx_data
+	else
+		-- Log a warning for missing files (but don't crash)
+		printh("Warning: Could not load gfx file: " .. gfx_file .. ".gfx")
+	end
+	return gfx_data
+end
+
+--- Fetches a sprite bitmap from the specified gfx file by index.
+--- @param anim_spr integer|string The sprite reference. Can be a number (uses 0.gfx) or "file:index" format.
 --- @return userdata? sprite_data The sprite bitmap data.
 local function get_sprite(anim_spr)
-	local sprite = gfx and gfx[anim_spr]
+	local gfx_file = "0"  -- Default to 0.gfx for backward compatibility
+	local sprite_index = anim_spr
+	
+	-- Parse file:index format
+	if type(anim_spr) == "string" then
+		local file, index = anim_spr:match("^([^:]+):(%d+)$")
+		if file and index then
+			gfx_file = file
+			sprite_index = tonumber(index)
+		else
+			-- If string doesn't match file:index format, treat as invalid
+			return nil
+		end
+	elseif type(anim_spr) ~= "number" then
+		return nil
+	end
+	
+	local gfx_data = load_gfx_file(gfx_file)
+	if not gfx_data then return nil end
+	
+	local sprite = gfx_data[sprite_index]
 	return sprite and sprite.bmp
 end
 
@@ -553,7 +591,10 @@ function _init()
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
 
-	gfx = fetch("/ram/cart/gfx/0.gfx")
+	gfx_cache = {}
+	
+	-- Load the default 0.gfx file for backward compatibility
+	load_gfx_file("0")
 	
 	local accessors = {
 		set_frame = set_frame,

@@ -14,7 +14,7 @@ local function attach_viewport(self,accessors,el)
 		camera(self.scroll.x-self.width*0.5,self.scroll.y-self.height*0.5)
 
 		local anim_spr = accessors.animator.sprite
-		if type(anim_spr) ~= "number" then return end
+		if type(anim_spr) ~= "number" and type(anim_spr) ~= "string" then return end
 		local spr_dat = accessors.get_sprite(anim_spr)
 		if not spr_dat then return end
 		local spr_w,spr_h = spr_dat:attribs()
