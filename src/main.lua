@@ -329,6 +329,14 @@ local function create_animation()
 	return anim_name
 end
 
+--- Helper function to create sprite reference string for specific gfx file.
+--- @param gfx_file string|number The gfx file number (e.g., 1 for "1.gfx")
+--- @param sprite_index number The sprite index within that file
+--- @return string sprite_ref The formatted sprite reference
+local function make_sprite_ref(gfx_file, sprite_index)
+	return tostr(gfx_file) .. ":" .. tostr(sprite_index)
+end
+
 --- Removes the animation with the given key.
 --- @param key string The key of the animation to remove.
 local function remove_animation(key)
@@ -635,6 +643,7 @@ function _init()
 		select_frame = select_frame,
 
 		get_sprite = get_sprite,
+		make_sprite_ref = make_sprite_ref,
 
 		animator = animator,
 	}
