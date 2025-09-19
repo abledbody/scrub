@@ -17,7 +17,7 @@ local animator --- @type Animator
 local animations --- @type table<string,Animation>
 local current_anim_key --- @type string
 local gui_data
-local gfx --- @type [{bmp:userdata}]
+local gfx_cache --- @type table<number, [{bmp:userdata}]>
 local palette --- @type userdata
 local playing --- @type boolean
 local timeline_selection --- @type {first:integer,last:integer}
@@ -514,11 +514,30 @@ local function set_playing(value)
 	playing = value
 end
 
---- Fetches a sprite bitmap off the 0.gfx file by index.
+--- Fetches a gfx file by its index, caching it if it hasn't alredy been loaded.
+--- @param gfx_file_index integer The index of the gfx file to fetch.
+--- @return [{bmp:userdata}]? gfx_data The gfx file data.
+local function get_indexed_gfx(gfx_file_index)
+	local gfx_data = gfx_cache and gfx_cache[gfx_file_index]
+	if gfx_data then return gfx_data end
+	
+	gfx_data = fetch("/ram/cart/gfx/"..gfx_file_index..".gfx")
+	gfx_cache[gfx_file_index] = gfx_data
+	
+	return gfx_data
+end
+
+--- Fetches a sprite bitmap from the loaded cartridge by its index.
 --- @param anim_spr integer The index of the sprite to fetch.
 --- @return userdata? sprite_data The sprite bitmap data.
 local function get_sprite(anim_spr)
-	local sprite = gfx and gfx[anim_spr]
+	if type(anim_spr) ~= "number" then return nil end
+	
+	local gfx_file_index = anim_spr//256
+	local gfx_spr_index = anim_spr%256
+	
+	local gfx_file = get_indexed_gfx(gfx_file_index)
+	local sprite = gfx_file and gfx_file[gfx_spr_index]
 	return sprite and sprite.bmp
 end
 
@@ -528,6 +547,12 @@ function _init()
 		tabbed = true,
 		icon = --[[pod_type="gfx"]]unpod("b64:bHo0ACkAAAAsAAAA8AJweHUAQyAICASABwAHAAcgFwYAYQA3AAcARwoAARAAcCAHAAcAB4A=")
 	}
+	
+	on_event("gained_focus",function()
+		-- There's a chance the gfx or pal files have been updated.
+		gfx_cache = {}
+		poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
+	end)
 
 	local sw,sh = get_display():attribs()
 	ScreenSize = vec(sw,sh)
@@ -553,7 +578,7 @@ function _init()
 	end
 	poke4(0x5000,fetch(DATP.."pal/0.pal"):get())
 
-	gfx = fetch("/ram/cart/gfx/0.gfx")
+	gfx_cache = {}
 	
 	local accessors = {
 		set_frame = set_frame,
