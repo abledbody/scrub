@@ -1,6 +1,6 @@
 {
 	"Lua.workspace.library": [
-		"C:\\lualib\\picotron"
+		"C:\\lualib\\picotron-definitions"
 	],
 	"Lua.runtime.nonstandardSymbol": [
 		"!=",

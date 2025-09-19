@@ -161,7 +161,7 @@ function attach_better_scrollbars(self,attribs)
 			local l0 = self.widthwise and self.width or self.height
 			local l1 = self.widthwise and contents.width or contents.height
 			local l2 = self.widthwise and container.width or container.height
-			local bar_length = max(9, l0 / l1 * l0)\1  -- bar length; minimum 9 pixels
+			local bar_length = max(9, l0 / l1 * l0)//1  -- bar length; minimum 9 pixels
 			local emp_l = l0 - bar_length - 1          -- empty length (-1 for 1px boundary at bottom)
 			local max_offset = max(0, l1 - l2)
 

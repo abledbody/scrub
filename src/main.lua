@@ -56,12 +56,12 @@ function set_scanline_palette(palette_i,first_y,last_y)
 	first_y = mid(0,first_y,269)
 	last_y = mid(0,last_y,269)
 	
-	local first_byte_i = first_y\4
+	local first_byte_i = first_y//4
 	local last_byte_i = ceil(last_y/4)
 	local scanline_bytes = userdata("u8",last_byte_i-first_byte_i+1)
 
 	for y = first_y,last_y do
-		local i = y\4-first_byte_i
+		local i = y//4-first_byte_i
 		local j = y%4*2
 		assert(scanline_bytes[i])
 		scanline_bytes[i] = (scanline_bytes[i]&(~(3<<j)))|(palette_i<<j)

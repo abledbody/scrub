@@ -46,7 +46,7 @@ local function attach(self,accessors,el)
 		end
 	end
 
-	function el.container.frames:drag(msg) accessors.select_frame(msg.mx\8+1) end
+	function el.container.frames:drag(msg) accessors.select_frame(msg.mx//8+1) end
 
 	el.insert_button = el.container:attach{
 		x = 0,y = 0,
