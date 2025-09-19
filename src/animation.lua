@@ -5,6 +5,8 @@
 --- @field duration [number] An array indicating how long it takes for each frame to elapse. Does not support index -1.
 --- @field events [table<string,any>]? A table of events that occur at each frame. The keys are the event names, and the values are the data associated with that event.
 
+--- @alias FrameEvents table<string,any> A table of events that occur at a specific frame.
+
 --- Advances the time of the animator by dt.
 --- @param self Animator The animator.
 --- @param dt number The time to advance by.
@@ -87,7 +89,7 @@ local function new_animator(anim)
 	--- @field frame_t number The time that has elapsed since entering the current frame in seconds.
 	--- @field frame_advances integer How many times the frame index has incremented during the last call to `advance`.
 	--- @field ended boolean Whether or not the last call to `advance` advanced past the end of the animation.
-	--- @field events [table<string,any>] A table of all events that have occurred since the last call to `advance`.
+	--- @field events [FrameEvents] An array of all events that have occurred since the last call to `advance`.
 	--- @field [string] any Any value which is present in the current animation and frame, with a key that doesn't match any of Animator's fields or methods.
 	local animator = {
 		anim = anim,
