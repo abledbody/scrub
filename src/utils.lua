@@ -82,7 +82,7 @@ local function iterate_selection(timeline_selection)
 	return function()
 		if i > sel_last then return nil end
 		local frame = i
-		i += 1
+		i = i + 1
 		return frame
 	end
 end
@@ -93,7 +93,7 @@ local function next_name(basis,fetch)
 	local i = 1
 	local name = basis.."_1"
 	while fetch(name) do
-		i += 1
+		i = i + 1
 		name = basis.."_"..i
 	end
 	return name
