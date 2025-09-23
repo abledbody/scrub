@@ -7,7 +7,7 @@ local ANIMATIONS_PANEL_WIDTH <const> = 100
 local PROPERTIES_WIDTH <const> = 160
 local TIMELINE_HEIGHT <const> = 29
 local TRANSPORT_HEIGHT <const> = 17
-local TRANSPORT_WIDTH <const> = 13*4+4
+local TRANSPORT_WIDTH <const> = 12*5+5
 
 local blinker = 0
 
@@ -529,9 +529,35 @@ local function initialize(accessors)
 		width = TRANSPORT_WIDTH,height = TRANSPORT_HEIGHT,
 		draw = draw_panel,
 	}
+	
+	local first_frame_button = transport:attach{
+		x = 3,y = 3,
+		width = 11,height = 11,
+		cursor = "pointer",
+		draw = function(self)
+			draw_panel(self)
+			spr(14,2,2)
+		end,
+		click = function(self)
+			accessors.first_frame()
+		end,
+	}
+	
+	local prev_frame_button = transport:attach{
+		x = first_frame_button.x+first_frame_button.width+1,y = 3,
+		width = 11,height = 11,
+		cursor = "pointer",
+		draw = function(self)
+			draw_panel(self)
+			spr(22,2,2)
+		end,
+		click = function(self)
+			accessors.previous_frame()
+		end,
+	}
 
 	local play_button = transport:attach{
-		x = 3,y = 3,
+		x = prev_frame_button.x+prev_frame_button.width+1,y = 3,
 		width = 11,height = 11,
 		cursor = "pointer",
 		draw = function(self)
@@ -541,6 +567,32 @@ local function initialize(accessors)
 		end,
 		click = function(self)
 			accessors.set_playing(not accessors.get_playing())
+		end,
+	}
+	
+	local next_frame_button = transport:attach{
+		x = play_button.x+play_button.width+1,y = 3,
+		width = 11,height = 11,
+		cursor = "pointer",
+		draw = function(self)
+			draw_panel(self)
+			spr(23,2,2)
+		end,
+		click = function(self)
+			accessors.next_frame()
+		end,
+	}
+	
+	local last_frame_button = transport:attach{
+		x = next_frame_button.x+next_frame_button.width+1,y = 3,
+		width = 11,height = 11,
+		cursor = "pointer",
+		draw = function(self)
+			draw_panel(self)
+			spr(15,2,2)
+		end,
+		click = function(self)
+			accessors.last_frame()
 		end,
 	}
 

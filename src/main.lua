@@ -267,7 +267,7 @@ local function insert_frame()
 
 	select_frame(sel_last+1)
 	on_frames_changed()
-end
+end	
 
 local function remove_frame()
 	if playing then return end
@@ -514,6 +514,29 @@ local function set_playing(value)
 	playing = value
 end
 
+local function previous_frame()
+	set_playing(false)
+	local duration_count = #animations[current_anim_key].duration
+	select_frame((animator.frame_i-2)%duration_count+1)
+end
+
+local function next_frame()
+	set_playing(false)
+	local duration_count = #animations[current_anim_key].duration
+	select_frame((animator.frame_i%duration_count)+1)
+end
+
+local function first_frame()
+	set_playing(false)
+	select_frame(1)
+end
+
+local function last_frame()
+	set_playing(false)
+	local duration_count = #animations[current_anim_key].duration
+	select_frame(duration_count)
+end
+
 --- Fetches a gfx file by its index, caching it if it hasn't alredy been loaded.
 --- @param gfx_file_index integer The index of the gfx file to fetch.
 --- @return [{bmp:userdata}]? gfx_data The gfx file data.
@@ -617,6 +640,11 @@ function _init()
 		get_timeline_selection = function() return timeline_selection end,
 		set_timeline_selection = set_timeline_selection,
 		select_frame = select_frame,
+		
+		previous_frame = previous_frame,
+		next_frame = next_frame,
+		first_frame = first_frame,
+		last_frame = last_frame,
 
 		get_sprite = get_sprite,
 
@@ -649,14 +677,11 @@ function _update()
 	end
 
 	if not gui_data.gui:get_keyboard_focus_element() then
-		local duration_count = #animations[current_anim_key].duration
 		if keyp("left") then
-			set_playing(false)
-			select_frame((animator.frame_i-2)%duration_count+1)
+			previous_frame()
 		end
 		if keyp("right") then
-			set_playing(false)
-			select_frame((animator.frame_i%duration_count)+1)
+			next_frame()
 		end
 		if keyp("space") then
 			set_playing(not playing)
