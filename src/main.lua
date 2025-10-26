@@ -1,14 +1,14 @@
 --[[pod_format="raw",created="2025-04-08 23:03:23",modified="2025-04-08 23:03:23",revision=0]]
 include"src/require.lua"
 
--- Constants
+------------------------------------Constants-------------------------------------
 DT = 1/60
 
--- Dependencies
+-----------------------------------Dependencies-----------------------------------
 local Animation = require"src/animation"
 local Gui = require"src/gui"
 
--- Editor state
+-----------------------------------Editor state-----------------------------------
 ScreenSize = nil --- @type userdata
 Lightest = 7
 Darkest = 0
@@ -217,7 +217,7 @@ local function clean_events()
 	end
 end
 
--- Accessors
+------------------------------------Accessors-------------------------------------
 
 local function set_timeline_selection(first,last)
 	local length = #animations[current_anim_key].duration
@@ -564,7 +564,7 @@ local function get_sprite(anim_spr)
 	return sprite and sprite.bmp
 end
 
--- Picotron hooks
+--------------------------------Picotron callbacks--------------------------------
 function _init()
 	window{
 		tabbed = true,
