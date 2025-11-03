@@ -41,7 +41,40 @@ local function find_binary_cols(palette)
 	end
 end
 
+---@alias GfxData [{bmp:userdata}]
+
+---Fetches a gfx file by its index, caching it if it hasn't alredy been loaded.
+---@param gfx_cache table<integer, GfxData>
+---@param gfx_file_index integer The index of the gfx file to fetch.
+---@return GfxData? gfx_data The gfx file data.
+local function get_indexed_gfx(gfx_cache, gfx_file_index)
+	local gfx_data = gfx_cache and gfx_cache[gfx_file_index]
+	if gfx_data then return gfx_data end
+	
+	gfx_data = fetch("/ram/cart/gfx/" .. gfx_file_index .. ".gfx")
+	gfx_cache[gfx_file_index] = gfx_data
+	
+	return gfx_data
+end
+
+---Fetches a sprite bitmap from the loaded cartridge by its index.
+---@param gfx_cache table<integer, GfxData>
+---@param anim_spr integer The index of the sprite to fetch.
+---@return userdata? sprite_data The sprite bitmap data.
+local function get_sprite(gfx_cache, anim_spr)
+	if type(anim_spr) ~= "number" then return nil end
+	
+	local gfx_file_index = anim_spr // 256
+	local gfx_spr_index = anim_spr % 256
+	
+	local gfx_file = get_indexed_gfx(gfx_cache, gfx_file_index)
+	local sprite = gfx_file and gfx_file[gfx_spr_index]
+	return sprite and sprite.bmp
+end
+
 return {
 	set_scanline_palette = set_scanline_palette,
 	find_binary_cols = find_binary_cols,
+	get_indexed_gfx = get_indexed_gfx,
+	get_sprite = get_sprite,
 }

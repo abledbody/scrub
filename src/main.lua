@@ -7,7 +7,7 @@ DT = 1 / 60
 -----------------------------------Dependencies-----------------------------------
 local Animation = require"src/animation"
 local Gui = require"src/gui"
-local Editor = require"src/editor"
+local Editor = require"src/editor/editor"
 local Graphics = require"src/graphics"
 local StringUtils = require"src/string_utils"
 
@@ -15,6 +15,32 @@ local StringUtils = require"src/string_utils"
 ScreenSize = nil ---@type userdata
 Lightest = 7
 Darkest = 0
+
+local state
+
+---@return AppState
+local function new_app_state(editor_state)
+	-- gui_data = Gui.initialize(
+	-- 	editor_state
+	-- )
+	
+	-- editor_state.on_animations_changed = gui_data.on_animations_changed
+	-- editor_state.on_frames_changed = function(self)
+	-- 	self:set_timeline_selection(self.timeline_selection.first, self.timeline_selection.last)
+	-- 	gui_data.on_frames_changed()
+	-- end
+	-- editor_state.on_frame_change = gui_data.on_frame_change
+	-- editor_state.on_properties_changed = gui_data.on_properties_changed
+	-- editor_state.on_selection_changed = gui_data.on_selection_changed
+	-- editor_state.on_events_changed = gui_data.on_events_changed
+	
+	---@class AppState
+	local state = {
+		editor_state = editor_state,
+		-- gui_data = gui_data,
+	}
+	return state
+end
 
 local animator ---@type Animator
 local animations ---@type table<string,Animation>
@@ -60,18 +86,6 @@ local function iterate_selection()
 		i += 1
 		return frame
 	end
-end
-
----@param basis string
----@param fetch fun(str:string):any
-local function next_name(basis, fetch)
-	local i = 1
-	local name = basis .. "_1"
-	while fetch(name) do
-		i += 1
-		name = basis .. "_" .. i
-	end
-	return name
 end
 
 local function initialize_events()
@@ -214,7 +228,7 @@ end
 ---Creates a new animation with a unique name and sets it as the current animation.
 ---@return string anim_name The name of the newly created animation.
 local function create_animation()
-	local anim_name = next_name("new", function(key) return animations[key] end)
+	local anim_name = StringUtils.next_name("new", function(key) return animations[key] end)
 	
 	animations[anim_name] = {sprite = {0}, duration = {0.1}}
 	set_animation(anim_name)
@@ -296,7 +310,7 @@ end
 local function create_property()
 	local animation = animations[current_anim_key]
 	
-	local key = next_name("new", function(key) return animation[key] end)
+	local key = StringUtils.next_name("new", function(key) return animation[key] end)
 	
 	animation[key] = {}
 	
@@ -333,7 +347,7 @@ local function create_event()
 	if not animation.events then initialize_events() end
 	local events = animation.events
 	
-	local key = next_name("new", function(key)
+	local key = StringUtils.next_name("new", function(key)
 		for i in iterate_selection() do
 			local frame_events = events[i]
 			if frame_events and frame_events[key] then return true end
@@ -440,19 +454,6 @@ local function last_frame()
 	select_frame(duration_count)
 end
 
----Fetches a gfx file by its index, caching it if it hasn't alredy been loaded.
----@param gfx_file_index integer The index of the gfx file to fetch.
----@return [{bmp:userdata}]? gfx_data The gfx file data.
-local function get_indexed_gfx(gfx_file_index)
-	local gfx_data = gfx_cache and gfx_cache[gfx_file_index]
-	if gfx_data then return gfx_data end
-	
-	gfx_data = fetch("/ram/cart/gfx/" .. gfx_file_index .. ".gfx")
-	gfx_cache[gfx_file_index] = gfx_data
-	
-	return gfx_data
-end
-
 ---Fetches a sprite bitmap from the loaded cartridge by its index.
 ---@param anim_spr integer The index of the sprite to fetch.
 ---@return userdata? sprite_data The sprite bitmap data.
@@ -462,7 +463,7 @@ local function get_sprite(anim_spr)
 	local gfx_file_index = anim_spr // 256
 	local gfx_spr_index = anim_spr % 256
 	
-	local gfx_file = get_indexed_gfx(gfx_file_index)
+	local gfx_file = Graphics.get_indexed_gfx(gfx_cache, gfx_file_index)
 	local sprite = gfx_file and gfx_file[gfx_spr_index]
 	return sprite and sprite.bmp
 end
@@ -473,12 +474,6 @@ function _init()
 		tabbed = true,
 		icon = --[[pod_type="gfx"]] unpod("b64:bHo0ACkAAAAsAAAA8AJweHUAQyAICASABwAHAAcgFwYAYQA3AAcARwoAARAAcCAHAAcAB4A=")
 	}
-	
-	on_event("gained_focus", function()
-		--There's a chance the gfx or pal files have been updated.
-		gfx_cache = {}
-		poke4(0x5000, fetch(DATP .. "pal/0.pal"):get())
-	end)
 	
 	local sw, sh = get_display():attribs()
 	ScreenSize = vec(sw, sh)
@@ -491,18 +486,27 @@ function _init()
 		"/ram/cart/anm/0.anm"
 	)
 	
-	current_anim_key = next(animations) or "new_1"
-	animator = Animation.new_animator(animations[current_anim_key])
-	playing = false
-	timeline_selection = {first = 1, last = 1}
-	clean_events()
-	
 	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100, palette:get())
 		Graphics.find_binary_cols(palette)
 	end
 	poke4(0x5000, fetch(DATP .. "pal/0.pal"):get())
+	
+	local editor_state = Editor.new_editor_state(animations, palette)
+	state = new_app_state(editor_state)
+	
+	on_event("gained_focus", function()
+		--There's a chance the gfx or pal files have been updated.
+		gfx_cache = {}
+		poke4(0x5000, fetch(DATP .. "pal/0.pal"):get())
+	end)
+	
+	current_anim_key = next(animations) or "new_1"
+	animator = Animation.new_animator(animations[current_anim_key])
+	playing = false
+	timeline_selection = {first = 1, last = 1}
+	clean_events()
 	
 	gfx_cache = {}
 	

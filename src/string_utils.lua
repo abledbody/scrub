@@ -45,7 +45,20 @@ local function value_to_string(value)
 	return string.format("(" .. string.rep("%.15g", #value, ",") .. ")", value:get())
 end
 
+---@param basis string
+---@param fetch fun(str:string):any
+local function next_name(basis, fetch)
+	local i = 1
+	local name = basis .. "_1"
+	while fetch(name) do
+		i += 1
+		name = basis .. "_" .. i
+	end
+	return name
+end
+
 return {
 	string_to_value = string_to_value,
 	value_to_string = value_to_string,
+	next_name = next_name,
 }
