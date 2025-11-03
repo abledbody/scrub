@@ -310,7 +310,7 @@ local function populate(self)
 	end
 end
 
-local function attach_dictionary(self, accessors, el)
+local function attach_dictionary(self, el)
 	el = self:attach(el)
 	
 	el.selected_property = 1
@@ -412,7 +412,8 @@ local function attach_dictionary(self, accessors, el)
 	return el
 end
 
-local function initialize(accessors)
+---@param editor EditorState
+local function initialize(editor, gfx_cache)
 	-- This one's 269 because the scanlines don't care about window size.
 	Graphics.set_scanline_palette(1, 11, 269 - PANEL_HEIGHT)
 	
@@ -422,7 +423,7 @@ local function initialize(accessors)
 		end
 	}
 	
-	local viewport = Viewport.attach_viewport(gui, accessors, {
+	local viewport = Viewport.attach_viewport(gui, editor, gfx_cache, {
 		x = 0,
 		y = 0,
 		width = ScreenSize.x - ANIMATIONS_PANEL_WIDTH,
@@ -446,13 +447,13 @@ local function initialize(accessors)
 		width = animation_list.width - 9, height = animation_list.height,
 		populate = populate,
 		height_equation = function(_, len) return len * 12 end,
-		get = accessors.get_animation_keys,
+		get = function() return editor:get_animation_keys() end,
 		factory = function(self, i, item)
 			local row = self:attach{
 				x = 0, y = (i - 1) * 12,
 				width = self.width, height = 12,
 				draw = function(self)
-					if accessors.get_animation_key() == item then
+					if editor.current_anim_key == item then
 						rect(0, 0, self.width - 1, self.height - 1, Lightest)
 					end
 				end,
@@ -471,14 +472,14 @@ local function initialize(accessors)
 				
 				get = function(self) return self.item end,
 				set = function(self, value)
-					accessors.set_animation_key(value)
+					editor:rename_animation(value)
 					self.item = value
 				end,
 				click = function(self)
-					if accessors.get_animation_key() == self.item then
+					if editor.current_anim_key == self.item then
 						field_click(self)
 					else
-						accessors.set_animation(self.item)
+						editor:set_animation(self.item)
 					end
 				end,
 			})
@@ -494,7 +495,7 @@ local function initialize(accessors)
 					pal(7, 7)
 					pal(1, 1)
 				end,
-				click = function(self) accessors.remove_animation(item) end,
+				click = function(self) editor:remove_animation(item) end,
 			}
 			
 			return row
@@ -520,7 +521,7 @@ local function initialize(accessors)
 			pal(7, 7)
 			pal(1, 1)
 		end,
-		click = function(_) accessors.create_animation() end,
+		click = function(_) editor:create_animation() end,
 	}
 	
 	local panel = gui:attach{
@@ -532,7 +533,7 @@ local function initialize(accessors)
 		end,
 	}
 	
-	local timeline = Timeline.attach(gui, accessors, {
+	local timeline = Timeline.attach(gui, editor, {
 		x = 0,
 		y = ScreenSize.y - TIMELINE_HEIGHT,
 		width = ScreenSize.x,
@@ -555,7 +556,7 @@ local function initialize(accessors)
 			spr(14, 2, 2)
 		end,
 		click = function(self)
-			accessors.first_frame()
+			editor:first_frame()
 		end,
 	}
 	
@@ -568,7 +569,7 @@ local function initialize(accessors)
 			spr(22, 2, 2)
 		end,
 		click = function(self)
-			accessors.previous_frame()
+			editor:previous_frame()
 		end,
 	}
 	
@@ -578,11 +579,11 @@ local function initialize(accessors)
 		cursor = "pointer",
 		draw = function(self)
 			draw_panel(self)
-			local sprite = accessors.get_playing() and 7 or 6
+			local sprite = editor.playing and 7 or 6
 			spr(sprite, 2, 2)
 		end,
 		click = function(self)
-			accessors.set_playing(not accessors.get_playing())
+			editor:set_playing(not editor.playing)
 		end,
 	}
 	
@@ -595,7 +596,7 @@ local function initialize(accessors)
 			spr(23, 2, 2)
 		end,
 		click = function(self)
-			accessors.next_frame()
+			editor:next_frame()
 		end,
 	}
 	
@@ -608,36 +609,36 @@ local function initialize(accessors)
 			spr(15, 2, 2)
 		end,
 		click = function(self)
-			accessors.last_frame()
+			editor:last_frame()
 		end,
 	}
 	
-	local properties = attach_dictionary(gui, accessors, {
+	local properties = attach_dictionary(gui, {
 		x = ScreenSize.x - PROPERTIES_WIDTH,
 		y = viewport.height,
 		width = PROPERTIES_WIDTH,
 		height = panel.height,
 		label = "Properties",
-		get_dictionary = accessors.get_property_strings,
-		set_key = accessors.rename_property,
-		set_value = accessors.set_property_by_string,
+		get_dictionary = function() return editor:get_property_strings() end,
+		set_key = function(key, value) editor:rename_property(key, value) end,
+		set_value = function(key, value) editor:set_property_by_string(key, value) end,
 		get_removable = function(key) return key ~= "duration" end,
-		create = accessors.create_property,
-		remove = accessors.remove_property,
+		create = function() return editor:create_property() end,
+		remove = function(key) editor:remove_property(key) end,
 	})
 	
-	local events = attach_dictionary(gui, accessors, {
+	local events = attach_dictionary(gui, {
 		x = ScreenSize.x - PROPERTIES_WIDTH * 2,
 		y = viewport.height,
 		width = PROPERTIES_WIDTH,
 		height = panel.height,
 		label = "Events",
-		get_dictionary = accessors.get_event_strings,
-		set_key = accessors.rename_event,
-		set_value = accessors.set_event_by_string,
+		get_dictionary = function() return editor:get_event_strings() end,
+		set_key = function(key, value) editor:rename_event(key, value) end,
+		set_value = function(key, value) editor:set_event_by_string(key, value) end,
 		get_removable = function() return true end,
-		create = accessors.create_event,
-		remove = accessors.remove_event,
+		create = function() return editor:create_event() end,
+		remove = function(key) editor:remove_event(key) end,
 	})
 	
 	return {

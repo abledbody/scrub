@@ -103,6 +103,33 @@ local function remove_frame(self)
 	self:on_frames_changed()
 end
 
+---@param self EditorState
+local function previous_frame(self)
+	self:set_playing(false)
+	local duration_count = #self.animations[self.current_anim_key].duration
+	self:select_frame((self.animator.frame_i - 2) % duration_count + 1)
+end
+
+---@param self EditorState
+local function next_frame(self)
+	self:set_playing(false)
+	local duration_count = #self.animations[self.current_anim_key].duration
+	self:select_frame((self.animator.frame_i % duration_count) + 1)
+end
+
+---@param self EditorState
+local function first_frame(self)
+	self:set_playing(false)
+	self:select_frame(1)
+end
+
+---@param self EditorState
+local function last_frame(self)
+	self:set_playing(false)
+	local duration_count = #self.animations[self.current_anim_key].duration
+	self:select_frame(duration_count)
+end
+
 return {
 	iterate_selection = iterate_selection,
 	set_timeline_selection = set_timeline_selection,
@@ -111,4 +138,9 @@ return {
 	select_frame = select_frame,
 	insert_frame = insert_frame,
 	remove_frame = remove_frame,
+	
+	previous_frame = previous_frame,
+	next_frame = next_frame,
+	first_frame = first_frame,
+	last_frame = last_frame
 }

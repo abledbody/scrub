@@ -57,9 +57,21 @@ local function remove_animation(self, key)
 	self:on_animations_changed()
 end
 
+local function get_animation_keys(self)
+	local keys = {}
+	for k in pairs(self.animations) do
+		add(keys, k)
+	end
+	return keys
+end
+
+local function get_animation(self) return self.animations[self.current_anim_key] end
+
 return {
 	set_animation = set_animation,
 	rename_animation = rename_animation,
 	create_animation = create_animation,
 	remove_animation = remove_animation,
+	get_animation_keys = get_animation_keys,
+	get_animation = get_animation,
 }
