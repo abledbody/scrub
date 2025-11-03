@@ -1,3 +1,5 @@
+local Scrollbars = require"src/gui_elements/scrollbars"
+
 ---@param editor EditorState
 local function attach(self, editor, el)
 	el = self:attach(el)
@@ -80,7 +82,7 @@ local function attach(self, editor, el)
 		end,
 	}
 	
-	attach_better_scrollbars(el.frame_area, {widthwise = true})
+	Scrollbars.attach(el.frame_area, {widthwise = true})
 	
 	function el:align_buttons()
 		local sel_last = editor.timeline_selection.last
