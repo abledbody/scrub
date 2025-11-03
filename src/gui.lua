@@ -1,5 +1,6 @@
 local Viewport = require"src/viewport"
 local Timeline = require"src/timeline"
+local Graphics = require"src/graphics"
 
 local BLINKER_SPEED <const> = 1 * DT
 local PANEL_HEIGHT <const> = 100
@@ -413,7 +414,7 @@ end
 
 local function initialize(accessors)
 	-- This one's 269 because the scanlines don't care about window size.
-	set_scanline_palette(1, 11, 269 - PANEL_HEIGHT)
+	Graphics.set_scanline_palette(1, 11, 269 - PANEL_HEIGHT)
 	
 	local gui = create_gui{
 		update = function()

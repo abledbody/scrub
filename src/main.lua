@@ -7,6 +7,9 @@ DT = 1 / 60
 -----------------------------------Dependencies-----------------------------------
 local Animation = require"src/animation"
 local Gui = require"src/gui"
+local Editor = require"src/editor"
+local Graphics = require"src/graphics"
+local StringUtils = require"src/string_utils"
 
 -----------------------------------Editor state-----------------------------------
 ScreenSize = nil ---@type userdata
@@ -20,7 +23,7 @@ local gui_data
 local gfx_cache ---@type table<number, [{bmp:userdata}]>
 local palette ---@type userdata
 local playing ---@type boolean
-local timeline_selection ---@type {first:integer,last:integer}
+local timeline_selection ---@type {first:integer, last:integer}
 local lock_selection_to_frame ---@type boolean
 
 local on_animations_changed ---@type function
@@ -30,112 +33,18 @@ local on_properties_changed ---@type function
 local on_selection_changed ---@type function
 local on_events_changed ---@type function
 
----@return Animation
+---@return table<string, Animation>
 local function save_working_file()
 	return animations
 end
 
----@param item_1 table<string,Animation>?
+---@param item_1 table<string, Animation>?
 local function load_working_file(item_1)
 	if item_1 and type(item_1) ~= "table" then
 		notify("Failed to load working file.")
 		item_1 = nil
 	end
 	animations = item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}}
-end
-
----Sets the palette for the given range of scanlines.
----@param palette_i 0|1|2|3 The palette index to set.
----@param first_y integer The first scanline to set the palette for.
----@param last_y integer The last scanline to set the palette for.
-function set_scanline_palette(palette_i, first_y, last_y)
-	assert(palette_i >= 0 and palette_i < 4, "Palette index must be between 0 and 3.")
-	if first_y > last_y then
-		first_y, last_y = last_y, first_y
-	end
-	first_y = mid(0, first_y, 269)
-	last_y = mid(0, last_y, 269)
-	
-	local first_byte_i = first_y // 4
-	local last_byte_i = ceil(last_y / 4)
-	local scanline_bytes = userdata("u8", last_byte_i - first_byte_i + 1)
-	
-	for y = first_y, last_y do
-		local i = y // 4 - first_byte_i
-		local j = y % 4 * 2
-		assert(scanline_bytes[i])
-		scanline_bytes[i] = (scanline_bytes[i] & (~(3 << j)))|(palette_i << j)
-	end
-	
-	poke(0x5400 + first_byte_i, scanline_bytes:get())
-end
-
-local function find_binary_cols()
-	local lightest_mag = 0
-	local darkest_mag = 1000
-	for i = 0, 63 do
-		local colnum = palette:get(i)
-		local col = vec(colnum & 0xFF, (colnum >> 8) & 0xFF, (colnum >> 16) & 0xFF)
-		local mag = col:magnitude()
-		if mag > lightest_mag then
-			Lightest = i
-			lightest_mag = mag
-		elseif mag < darkest_mag then
-			Darkest = i
-			darkest_mag = mag
-		end
-	end
-end
-
-local function remove_trailing_zeros(str)
-	local s = str:find("%.0+$")
-	if s then return str:sub(1, s - 1) end
-	return str
-end
-
----@param str string
----@return any
-local function string_to_value(str)
-	assert(type(str) == "string", "Expected string, got " .. type(str))
-	
-	local whitespaceless = str:gsub("%s+", "")
-	local value
-	
-	local number = tonumber(whitespaceless)
-	if number then return number end
-	if whitespaceless == "nil" or value == "" then return nil end
-	if whitespaceless == "true" then return true end
-	if whitespaceless == "false" then return false end
-	
-	do
-		local delimiter_contents = whitespaceless:match("^%((.+)%)$")
-		if not delimiter_contents then goto skip_vector end
-		
-		local csv = split(delimiter_contents, ",")
-		local components = {}
-		for _,v in ipairs(csv) do
-			local component = tonumber(v)
-			if not component then goto skip_vector end
-			table.insert(components, component)
-		end
-		
-		return vec(unpack(components))
-	end
-	::skip_vector::
-	
-	return str
-end
-
----@param value any
----@return string
-local function value_to_string(value)
-	local value_type = type(value)
-	
-	if value_type ~= "userdata" then
-		return tostr(value)
-	end
-	
-	return string.format("(" .. string.rep("%.15g", #value, ",") .. ")", value:get())
 end
 
 local function iterate_selection()
@@ -339,7 +248,7 @@ local function get_property_strings()
 	local source_frame = timeline_selection.first
 	for k, v in pairs(animations[current_anim_key]) do
 		if k ~= "events" then
-			add(properties, {key = k, value = value_to_string(v[source_frame])})
+			add(properties, {key = k, value = StringUtils.value_to_string(v[source_frame])})
 		end
 	end
 	return properties
@@ -370,7 +279,7 @@ end
 ---@param key string
 ---@param str string
 local function set_property_by_string(key, str)
-	local value = string_to_value(str)
+	local value = StringUtils.string_to_value(str)
 	if key == "duration" and (type(value) ~= "number" or value <= 0) then
 		notify("Duration must be a positive number.")
 		return
@@ -414,7 +323,7 @@ local function get_event_strings()
 	if not frame_events then return {} end
 	
 	for k, v in pairs(frame_events) do
-		add(event_strings, {key = k, value = value_to_string(v)})
+		add(event_strings, {key = k, value = StringUtils.value_to_string(v)})
 	end
 	return event_strings
 end
@@ -490,7 +399,7 @@ local function set_event_by_string(key, str)
 	local events = animations[current_anim_key].events
 	if not events then return end
 	
-	local value = string_to_value(str)
+	local value = StringUtils.string_to_value(str)
 	if value == nil then return end
 	
 	for i in iterate_selection() do
@@ -591,7 +500,7 @@ function _init()
 	palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100, palette:get())
-		find_binary_cols()
+		Graphics.find_binary_cols(palette)
 	end
 	poke4(0x5000, fetch(DATP .. "pal/0.pal"):get())
 	
