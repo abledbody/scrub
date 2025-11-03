@@ -67,7 +67,10 @@ local function insert_frame(self)
 		if k == "events" then
 			add(v, {}, sel_last + 1)
 		else
-			add(v, v[sel_last], sel_last + 1)
+			local last_value = v[sel_last]
+			if last_value then
+				add(v, v[sel_last], sel_last + 1)
+			end
 		end
 	end
 	
