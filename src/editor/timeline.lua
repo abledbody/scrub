@@ -64,7 +64,11 @@ local function insert_frame(self)
 	local sel_last = self.timeline_selection.last
 	
 	for k, v in pairs(animation) do
-		v[sel_last + 1] = k == "events" and {} or v[sel_last]
+		if k == "events" then
+			add(v, {}, sel_last + 1)
+		else
+			add(v, v[sel_last], sel_last + 1)
+		end
 	end
 	
 	self:select_frame(sel_last + 1)
