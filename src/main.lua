@@ -111,26 +111,12 @@ local function string_to_value(str)
 		local delimiter_contents = whitespaceless:match("^%((.+)%)$")
 		if not delimiter_contents then goto skip_vector end
 		
+		local csv = split(delimiter_contents, ",")
 		local components = {}
-		local i = 1
-		local sep = false
-		while i <= #delimiter_contents do
-			local s, e
-			if sep then
-				s, e = delimiter_contents:find(",", i)
-			else
-				s, e = delimiter_contents:find("[+-]?%d+%.%d+", i)
-				if not s or s ~= i then
-					s, e = delimiter_contents:find("[+-]?%d+", i)
-				end
-				
-				local num = tonumber(delimiter_contents:sub(s, e))
-				if not num then goto skip_vector end
-				add(components, num)
-			end
-			if not s or s ~= i then goto skip_vector end
-			i = e + 1
-			sep = not sep
+		for _,v in ipairs(csv) do
+			local component = tonumber(v)
+			if not component then goto skip_vector end
+			table.insert(components, component)
 		end
 		
 		return vec(unpack(components))
@@ -149,13 +135,7 @@ local function value_to_string(value)
 		return tostr(value)
 	end
 	
-	local str = "("
-	for i = 0, #value - 1 do
-		str = str .. remove_trailing_zeros(tostr(value[i]))
-		if i < #value - 1 then str = str .. "," end
-	end
-	str = str .. ")"
-	return str
+	return string.format("(" .. string.rep("%.15g", #value, ",") .. ")", value:get())
 end
 
 local function iterate_selection()
