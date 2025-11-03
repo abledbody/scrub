@@ -14,7 +14,7 @@ end
 ---@param animations table<string, Animation>
 ---@param palette userdata
 ---@return EditorState
-local function new_editor_state(animations, palette)
+local function new_state(animations, palette)
 	local current_anim_key = next(animations) or "new_1"
 	
 	---@class EditorState
@@ -73,5 +73,5 @@ local function new_editor_state(animations, palette)
 end
 
 return {
-	new_editor_state = new_editor_state,
+	new_state = new_state,
 }

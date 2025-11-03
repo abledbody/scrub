@@ -1,9 +1,11 @@
-local Viewport = require"src/viewport"
-local Timeline = require"src/timeline"
 local Graphics = require"src/graphics"
+local Utils = require"src/gui/utils"
 
-local Field = require"src/gui_elements/field"
-local Scrollbars = require"src/gui_elements/scrollbars"
+local Field = require"src/gui/elements/field"
+local Viewport = require"src/gui/elements/viewport"
+local Timeline = require"src/gui/elements/timeline"
+local Scrollbars = require"src/gui/elements/scrollbars"
+local Dictionary = require"src/gui/elements/dictionary"
 
 local BLINKER_SPEED <const> = 1 * DT
 local PANEL_HEIGHT <const> = 100
@@ -13,159 +15,15 @@ local TIMELINE_HEIGHT <const> = 29
 local TRANSPORT_HEIGHT <const> = 17
 local TRANSPORT_WIDTH <const> = 12 * 5 + 5
 
-local blinker = 0
+local blinker = {t = 0}
 
---- Draws a beveled panel.
-local function draw_panel(self)
-	local col = self.col or 34
-	local high = self.high or 35
-	local shade = self.shadow or 33
-	
-	rectfill(0, 0, self.width, self.height, col)
-	line(0, 0, self.width - 1, 0, high)
-	line(0, 0, 0, self.height - 1, high)
-	line(0, self.height - 1, self.width - 1, self.height - 1, shade)
-	line(self.width - 1, 0, self.width - 1, self.height - 1, shade)
+local function draw_dictionary(self)
+	Utils.draw_panel(self)
+	line(2, self.height - 11, self.width - 11, self.height - 11, 33)
 end
 
---- Draws a rectangle across the whole element
-local function fill(self)
-	local col = self.col or 34
-	rectfill(0, 0, self.width - 1, self.height - 1, col)
-end
-
-local function border(self)
-	local col = self.col or 34
-	rect(0, 0, self.width - 1, self.height - 1, col)
-end
-
-local function populate(self)
-	assert(self.get, "populate() requires a get() function")
-	assert(self.factory, "populate() requires a factory() function")
-	
-	self.items = self.items or {}
-	for i = #self.items, 1, -1 do
-		self:detach(self.items[i])
-		deli(self.items, i)
-	end
-	
-	local items = self:get()
-	
-	for i, item in ipairs(items) do
-		local value = self:factory(i, item)
-		assert(value, "factory must return a value")
-		self.items[i] = value
-	end
-	
-	if self.height_equation then
-		self.height = self:height_equation(#items)
-	end
-	if self.width_equation then
-		self.width = self:width_equation(#items)
-	end
-end
-
-local function attach_dictionary(self, el)
-	el = self:attach(el)
-	
-	el.selected_property = 1
-	
-	el.list = el:attach{
-		x = 1, y = 1,
-		width = el.width - 2, height = el.height - 13,
-	}
-	
-	el.container = el.list:attach{
-		x = 0,
-		y = 0,
-		width = el.list.width,
-		height = el.list.height,
-		
-		populate = populate,
-		height_equation = function(_, len) return len * 10 end,
-		
-		get = el.get_dictionary,
-		set_key = el.set_key,
-		set_value = el.set_value,
-		get_removable = el.get_removable,
-		remove = el.remove,
-		
-		factory = function(self, i, item)
-			local key = item.key
-			
-			local row = self:attach{
-				x = 0, y = (i - 1) * 10,
-				width = self.width - 9, height = 10,
-			}
-			
-			local field_width = (row.width - 8) * 0.5
-			
-			Field.attach(row, {
-				x = 0,
-				y = 0,
-				width = field_width,
-				height = 10,
-				fill_col = 0,
-				text_col = 7,
-				fill_col_focused = 19,
-				text_col_focused = 7,
-				get = function() return key end,
-				set = function(_, value) self.set_key(key, value) end,
-			})
-			
-			Field.attach(row, {
-				x = field_width,
-				y = 0,
-				width = field_width,
-				height = 10,
-				fill_col = 0,
-				text_col = 7,
-				fill_col_focused = 19,
-				text_col_focused = 7,
-				get = function() return item.value end,
-				set = function(_, value) self.set_value(key, value) end,
-			})
-			
-			if self.get_removable and self.get_removable(key) then
-				row:attach{
-					x = row.width - 7, y = 2,
-					width = 7, height = 7,
-					cursor = "pointer",
-					draw = function(self) spr(3) end,
-					click = function() self.remove(key) end,
-				}
-			end
-			
-			return row
-		end
-	}
-	
-	el.add_button = el:attach{
-		x = el.width - 17, y = el.height - 9,
-		width = 8, height = 8,
-		cursor = "pointer",
-		draw = function() spr(2, 0, 0) end,
-		click = function() el.create() end,
-	}
-	
-	el:attach{
-		x = 2, y = el.height - 9,
-		width = el.add_button.x - 3, height = 8,
-		label = el.label,
-		col = el.col,
-		draw = function(self) print(self.label, 0, 0, 36) end,
-	}
-	
-	function el:draw()
-		draw_panel(self)
-		line(2, el.height - 11, self.width - 11, el.height - 11, 33)
-	end
-	
-	Scrollbars.attach(el.list)
-	el.container:populate()
-	
-	return el
-end
+local function draw_add_button(self) spr(2) end
+local function draw_remove_button(self) spr(3) end
 
 ---@param editor EditorState
 local function initialize(editor, gfx_cache)
@@ -174,7 +32,7 @@ local function initialize(editor, gfx_cache)
 	
 	local gui = create_gui{
 		update = function()
-			blinker = (blinker + BLINKER_SPEED) % 1
+			blinker.t = (blinker.t + BLINKER_SPEED) % 1
 		end
 	}
 	
@@ -189,7 +47,7 @@ local function initialize(editor, gfx_cache)
 		x = viewport.width, y = 0,
 		width = ANIMATIONS_PANEL_WIDTH, height = viewport.height,
 		col = Lightest,
-		draw = border,
+		draw = Utils.border,
 	}
 	
 	local animation_list = animations_panel:attach{
@@ -200,7 +58,7 @@ local function initialize(editor, gfx_cache)
 	local animation_list_container = animation_list:attach{
 		x = 0, y = 0,
 		width = animation_list.width - 9, height = animation_list.height,
-		populate = populate,
+		populate = Utils.populate,
 		height_equation = function(_, len) return len * 12 end,
 		get = function() return editor:get_animation_keys() end,
 		factory = function(self, i, item)
@@ -224,6 +82,7 @@ local function initialize(editor, gfx_cache)
 				text_col = Lightest,
 				fill_col_focused = Lightest,
 				text_col_focused = Darkest,
+				blinker = blinker,
 				
 				get = function(self) return self.item end,
 				set = function(self, value)
@@ -262,6 +121,7 @@ local function initialize(editor, gfx_cache)
 		bgcol = Lightest,
 	})
 	
+	---@diagnostic disable-next-line undefined-field
 	animation_list_container:populate()
 	
 	local add_animation_button = animations_panel:attach{
@@ -283,7 +143,7 @@ local function initialize(editor, gfx_cache)
 		x = 0, y = viewport.height,
 		width = ScreenSize.x - PROPERTIES_WIDTH * 2, height = PANEL_HEIGHT - TIMELINE_HEIGHT,
 		draw = function(self)
-			draw_panel(self)
+			Utils.draw_panel(self)
 			spr(24, self.width * 0.5 - 32, 4)
 		end,
 	}
@@ -293,13 +153,13 @@ local function initialize(editor, gfx_cache)
 		y = ScreenSize.y - TIMELINE_HEIGHT,
 		width = ScreenSize.x,
 		height = TIMELINE_HEIGHT,
-		draw = draw_panel,
+		draw = Utils.draw_panel,
 	})
 	
 	local transport = gui:attach{
 		x = 0, y = timeline.y - TRANSPORT_HEIGHT,
 		width = TRANSPORT_WIDTH, height = TRANSPORT_HEIGHT,
-		draw = draw_panel,
+		draw = Utils.draw_panel,
 	}
 	
 	local first_frame_button = transport:attach{
@@ -307,7 +167,7 @@ local function initialize(editor, gfx_cache)
 		width = 11, height = 11,
 		cursor = "pointer",
 		draw = function(self)
-			draw_panel(self)
+			Utils.draw_panel(self)
 			spr(14, 2, 2)
 		end,
 		click = function(self)
@@ -320,7 +180,7 @@ local function initialize(editor, gfx_cache)
 		width = 11, height = 11,
 		cursor = "pointer",
 		draw = function(self)
-			draw_panel(self)
+			Utils.draw_panel(self)
 			spr(22, 2, 2)
 		end,
 		click = function(self)
@@ -333,7 +193,7 @@ local function initialize(editor, gfx_cache)
 		width = 11, height = 11,
 		cursor = "pointer",
 		draw = function(self)
-			draw_panel(self)
+			Utils.draw_panel(self)
 			local sprite = editor.playing and 7 or 6
 			spr(sprite, 2, 2)
 		end,
@@ -347,7 +207,7 @@ local function initialize(editor, gfx_cache)
 		width = 11, height = 11,
 		cursor = "pointer",
 		draw = function(self)
-			draw_panel(self)
+			Utils.draw_panel(self)
 			spr(23, 2, 2)
 		end,
 		click = function(self)
@@ -360,7 +220,7 @@ local function initialize(editor, gfx_cache)
 		width = 11, height = 11,
 		cursor = "pointer",
 		draw = function(self)
-			draw_panel(self)
+			Utils.draw_panel(self)
 			spr(15, 2, 2)
 		end,
 		click = function(self)
@@ -368,12 +228,18 @@ local function initialize(editor, gfx_cache)
 		end,
 	}
 	
-	local properties = attach_dictionary(gui, {
+	local properties = Dictionary.attach(gui, {
 		x = ScreenSize.x - PROPERTIES_WIDTH,
 		y = viewport.height,
 		width = PROPERTIES_WIDTH,
 		height = panel.height,
 		label = "Properties",
+		blinker = blinker,
+		
+		draw = draw_dictionary,
+		draw_add_button = draw_add_button,
+		draw_remove_button = draw_remove_button,
+		
 		get_dictionary = function() return editor:get_property_strings() end,
 		set_key = function(key, value) editor:rename_property(key, value) end,
 		set_value = function(key, value) editor:set_property_by_string(key, value) end,
@@ -382,12 +248,18 @@ local function initialize(editor, gfx_cache)
 		remove = function(key) editor:remove_property(key) end,
 	})
 	
-	local events = attach_dictionary(gui, {
+	local events = Dictionary.attach(gui, {
 		x = ScreenSize.x - PROPERTIES_WIDTH * 2,
 		y = viewport.height,
 		width = PROPERTIES_WIDTH,
 		height = panel.height,
 		label = "Events",
+		blinker = blinker,
+		
+		draw = draw_dictionary,
+		draw_add_button = draw_add_button,
+		draw_remove_button = draw_remove_button,
+		
 		get_dictionary = function() return editor:get_event_strings() end,
 		set_key = function(key, value) editor:rename_event(key, value) end,
 		set_value = function(key, value) editor:set_event_by_string(key, value) end,
@@ -399,6 +271,7 @@ local function initialize(editor, gfx_cache)
 	return {
 		gui = gui,
 		on_animations_changed = function()
+			---@diagnostic disable-next-line undefined-field
 			animation_list_container:populate()
 		end,
 		on_frames_changed = function()

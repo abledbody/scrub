@@ -1,4 +1,4 @@
-local Scrollbars = require"src/gui_elements/scrollbars"
+local Scrollbars = require"src/gui/elements/scrollbars"
 
 ---@param editor EditorState
 local function attach(self, editor, el)

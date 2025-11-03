@@ -11,7 +11,7 @@ local function draw(self)
 	local offset = has_keyboard_focus and self.offset or 0
 	print(str, 1 - offset, 1, text_col)
 	
-	if has_keyboard_focus and blinker < 0.5 then
+	if has_keyboard_focus and self.blinker.t < 0.5 then
 		local x = self.curs_pos - offset
 		line(x, 1, x, 8, text_col)
 	end
@@ -23,7 +23,7 @@ local function draw(self)
 	end
 end
 
-local function field_click(self)
+local function click(self)
 	self:set_keyboard_focus(true)
 	self.str = self:get()
 	self:update_cursor(#self.str)
@@ -66,7 +66,7 @@ local function attach(self, el)
 	-- Draw gets set during attach. I don't know why, but to be on the safe side,
 	-- we handle the other defaulted functions here too.
 	local draw = el.draw or draw
-	local click = el.click or field_click
+	local click = el.click or click
 	local update = el.update or update
 	
 	el = self:attach(el)
@@ -88,7 +88,7 @@ local function attach(self, el)
 			max_width - self.width + 1
 		)
 		
-		blinker = 0
+		self.blinker.t = 0
 	end
 	
 	el:update_cursor(#el.str)

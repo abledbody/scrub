@@ -6,8 +6,8 @@ DT = 1 / 60
 
 -----------------------------------Dependencies-----------------------------------
 
-local Gui = require"src/gui"
-local Editor = require"src/editor/editor"
+local EditorGui = require"src/gui/editor"
+local Editor = require"src/editor/state"
 local Graphics = require"src/graphics"
 
 -----------------------------------Editor state-----------------------------------
@@ -19,7 +19,7 @@ local state
 
 ---@return AppState
 local function new_app_state(editor_state, gfx_cache)
-	local gui_data = Gui.initialize(editor_state, gfx_cache)
+	local gui_data = EditorGui.initialize(editor_state, gfx_cache)
 	
 	editor_state.on_animations_changed = gui_data.on_animations_changed
 	editor_state.on_frames_changed = function(self)
@@ -72,7 +72,7 @@ function _init()
 			notify("Failed to load working file.")
 			item_1 = nil
 		end
-		editor_state = Editor.new_editor_state(item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}}, palette)
+		editor_state = Editor.new_state(item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}}, palette)
 		state = new_app_state(editor_state, gfx_cache)
 		editor_state:clean_events()
 	end
