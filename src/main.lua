@@ -2,6 +2,7 @@
 include"src/require.lua"
 
 ------------------------------------Constants-------------------------------------
+
 DT = 1 / 60
 
 -----------------------------------Dependencies-----------------------------------
@@ -11,6 +12,7 @@ local Editor = require"src/editor/state"
 local Graphics = require"src/graphics"
 
 -----------------------------------Editor state-----------------------------------
+
 ScreenSize = nil ---@type userdata
 Lightest = 7
 Darkest = 0
@@ -40,6 +42,7 @@ local function new_app_state(editor_state, gfx_cache)
 end
 
 --------------------------------Picotron callbacks--------------------------------
+
 function _init()
 	window{
 		tabbed = true,
@@ -60,12 +63,12 @@ function _init()
 	
 	local editor_state
 	local gfx_cache = {}
-
+	
 	---@return table<string, Animation>
 	local function save_working_file()
 		return editor_state.animations
 	end
-
+	
 	---@param item_1 table<string, Animation>?
 	local function load_working_file(item_1)
 		if item_1 and type(item_1) ~= "table" then

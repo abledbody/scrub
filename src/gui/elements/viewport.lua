@@ -1,5 +1,29 @@
 local Graphics = require"src/graphics"
 
+---@param self EditorState
+---@return [userdata]
+local function get_2d_vectors(self)
+	local vectors = {}
+	local source_frame = self.timeline_selection.first
+	for k, v in pairs(self.animations[self.current_anim_key]) do
+		if k == "events" then
+			local events = v[source_frame]
+			for _, event_v in pairs(events) do
+				local value = event_v[source_frame]
+				if type(value) == "userdata" and #value >= 2 then
+					add(vectors, value)
+				end
+			end
+		elseif k != "pivot" then
+			local value = v[source_frame]
+			if type(value) == "userdata" and #value >= 2 then
+				add(vectors, value)
+			end
+		end
+	end
+	return vectors
+end
+
 ---@param editor EditorState
 local function attach_viewport(self, editor, gfx_cache, el)
 	el = self:attach(el)
@@ -24,13 +48,20 @@ local function attach_viewport(self, editor, gfx_cache, el)
 		local pivot = editor.animator.pivot
 		if type(pivot) ~= "userdata" or #pivot < 2 then pivot = vec(0, 0) end
 		
-		sspr(spr_dat, 0, 0, spr_w, spr_h, (-0.5 - pivot.x) * self.zoom + 0.5, (-0.5 - pivot.y) * self.zoom + 0.5,
+		sspr(spr_dat, 0, 0, spr_w, spr_h, -pivot.x * self.zoom, -pivot.y * self.zoom,
 			spr_w * self.zoom, spr_h * self.zoom)
 		
-		if not editor.playing then
+		local vectors = get_2d_vectors(editor)
+		
+		if editor.show_pivot_state == 1 and not editor.playing or editor.show_pivot_state == 0 then
 			pal(7, Lightest)
+			
 			spr(20, -4, -4)
-			pal(7, 7)
+			for v in all(vectors) do
+				spr(19, self.zoom * v.x - 4, self.zoom * v.y - 4)
+			end
+			
+			pal(7)
 		end
 	end
 	
@@ -52,7 +83,6 @@ local function attach_viewport(self, editor, gfx_cache, el)
 	end
 	
 	function el:viewport_to_local()
-		--WARNING: UNTESTED
 		local mx, my = mouse()
 		local rx = (mx - self.scroll.x) / self.zoom
 		local ry = (my - self.scroll.y) / self.zoom

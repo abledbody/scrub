@@ -18,6 +18,10 @@ local function new_state(animations, palette)
 	local current_anim_key = next(animations) or "new_1"
 	
 	---@class EditorState
+	---@field show_pivot_state
+	---|0: Show
+	---|1: Show when paused
+	---|2: Hide
 	local state = {
 		animator = Animation.new_animator(animations[current_anim_key]), ---@type Animator
 		animations = animations, ---@type table<string, Animation>
@@ -27,6 +31,7 @@ local function new_state(animations, palette)
 		playing = false, ---@type boolean
 		timeline_selection = {first = 1, last = 1}, ---@type {first:integer, last:integer}
 		lock_selection_to_frame = false, ---@type boolean
+		show_pivot_state = 0,
 		
 		set_playing = set_playing,
 		

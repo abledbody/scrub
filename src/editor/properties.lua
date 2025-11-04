@@ -1,7 +1,7 @@
 local StringUtils = require"src/string_utils"
 
 ---@param self EditorState
----@return [string]
+---@return [{key: string, value: string}]
 local function get_property_strings(self)
 	local properties = {}
 	local source_frame = self.timeline_selection.first

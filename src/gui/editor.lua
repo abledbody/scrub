@@ -163,6 +163,30 @@ local function initialize(editor, gfx_cache)
 		draw = Utils.draw_panel,
 	})
 	
+	local show_pivot_button = gui:attach{
+		x = ScreenSize.x - PROPERTIES_WIDTH * 2 - 11,
+		y = viewport.height,
+		width = 11, height = 11,
+		draw = function(self)
+			Utils.draw_panel(self)
+			
+			local state = editor.show_pivot_state
+			local sprite
+			if state == 0 then
+				sprite = 29
+			elseif state == 1 then
+				sprite = 30
+			elseif state == 2 then
+				sprite = 31
+			end
+			
+			spr(sprite, 2, 2)
+		end,
+		click = function(self)
+			editor.show_pivot_state = (editor.show_pivot_state + 1) % 3
+		end,
+	}
+	
 	local properties = Dictionary.attach(gui, {
 		x = ScreenSize.x - PROPERTIES_WIDTH,
 		y = viewport.height,
