@@ -22,7 +22,5 @@
 	"Lua.runtime.version": "Lua 5.4",
 	"editor.rulers": [
 		82
-	],
-	"Lua.diagnostics.globals": [
-	],
+	]
 }

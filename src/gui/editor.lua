@@ -6,6 +6,7 @@ local Viewport = require"src/gui/elements/viewport"
 local Timeline = require"src/gui/elements/timeline"
 local Scrollbars = require"src/gui/elements/scrollbars"
 local Dictionary = require"src/gui/elements/dictionary"
+local Transport = require"src/gui/elements/transport"
 
 local BLINKER_SPEED <const> = 1 * DT
 local PANEL_HEIGHT <const> = 100
@@ -156,77 +157,11 @@ local function initialize(editor, gfx_cache)
 		draw = Utils.draw_panel,
 	})
 	
-	local transport = gui:attach{
+	local transport = Transport.attach(gui, editor, {
 		x = 0, y = timeline.y - TRANSPORT_HEIGHT,
 		width = TRANSPORT_WIDTH, height = TRANSPORT_HEIGHT,
 		draw = Utils.draw_panel,
-	}
-	
-	local first_frame_button = transport:attach{
-		x = 3, y = 3,
-		width = 11, height = 11,
-		cursor = "pointer",
-		draw = function(self)
-			Utils.draw_panel(self)
-			spr(14, 2, 2)
-		end,
-		click = function(self)
-			editor:first_frame()
-		end,
-	}
-	
-	local prev_frame_button = transport:attach{
-		x = first_frame_button.x + first_frame_button.width + 1, y = 3,
-		width = 11, height = 11,
-		cursor = "pointer",
-		draw = function(self)
-			Utils.draw_panel(self)
-			spr(22, 2, 2)
-		end,
-		click = function(self)
-			editor:previous_frame()
-		end,
-	}
-	
-	local play_button = transport:attach{
-		x = prev_frame_button.x + prev_frame_button.width + 1, y = 3,
-		width = 11, height = 11,
-		cursor = "pointer",
-		draw = function(self)
-			Utils.draw_panel(self)
-			local sprite = editor.playing and 7 or 6
-			spr(sprite, 2, 2)
-		end,
-		click = function(self)
-			editor:set_playing(not editor.playing)
-		end,
-	}
-	
-	local next_frame_button = transport:attach{
-		x = play_button.x + play_button.width + 1, y = 3,
-		width = 11, height = 11,
-		cursor = "pointer",
-		draw = function(self)
-			Utils.draw_panel(self)
-			spr(23, 2, 2)
-		end,
-		click = function(self)
-			editor:next_frame()
-		end,
-	}
-	
-	local last_frame_button = transport:attach{
-		x = next_frame_button.x + next_frame_button.width + 1, y = 3,
-		width = 11, height = 11,
-		cursor = "pointer",
-		draw = function(self)
-			Utils.draw_panel(self)
-			spr(15, 2, 2)
-		end,
-		click = function(self)
-			editor:last_frame()
-		end,
-	}
+	})
 	
 	local properties = Dictionary.attach(gui, {
 		x = ScreenSize.x - PROPERTIES_WIDTH,
