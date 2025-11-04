@@ -9,9 +9,8 @@ local function get_2d_vectors(self)
 		if k == "events" then
 			local events = v[source_frame]
 			for _, event_v in pairs(events) do
-				local value = event_v[source_frame]
-				if type(value) == "userdata" and #value >= 2 then
-					add(vectors, value)
+				if type(event_v) == "userdata" and #event_v >= 2 then
+					add(vectors, event_v)
 				end
 			end
 		elseif k != "pivot" then
