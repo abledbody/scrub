@@ -70,16 +70,17 @@ function _init()
 		return editor_state.animations, editor_state:export_metadata()
 	end
 	
-	---@param item_1 table<string, Animation>?
-	local function load_working_file(item_1, metadata)
-		if item_1 and type(item_1) ~= "table" then
+	---@param data table<string, Animation>?
+	---@param metadata EditorMetadata?
+	local function load_working_file(data, metadata)
+		if data and type(data) ~= "table" then
 			notify("Failed to load working file.")
-			item_1 = nil
+			data = nil
 		end
 		editor_state = Editor.new_state(
-			item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}},
+			data or {animation_1 = {sprite = {0}, duration = {0.1}}},
 			palette,
-			metadata
+			metadata or {}
 		)
 		state = new_app_state(editor_state, gfx_cache)
 		editor_state:clean_events()

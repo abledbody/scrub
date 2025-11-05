@@ -32,6 +32,7 @@ local function create_animation(self)
 	
 	self.animations[anim_name] = {sprite = {0}, duration = {0.1}}
 	self.property_orders[anim_name] = new_index_map({"duration"})
+	self.animation_order:insert(anim_name)
 	self:set_animation(anim_name)
 	
 	self:on_animations_changed()
@@ -44,18 +45,22 @@ end
 local function remove_animation(self, key)
 	if not self.animations[key] then return end
 	
-	if key == self.current_anim_key then
-		local next_key = next(self.animations, key) or next(self.animations)
-		self.animations[key] = nil
-		self.property_orders[key] = nil
+	local deleting_current = key == self.current_anim_key
+	local next_key
+	if deleting_current then
+		next_key = next(self.animations, key) or next(self.animations)
+	end
+	
+	self.animations[key] = nil
+	self.property_orders[key] = nil
+	self.animation_order:remove(key)
+	
+	if deleting_current then
 		if next_key and next_key ~= self.current_anim_key then
 			self:set_animation(next_key)
 		else
 			self:set_animation(self:create_animation())
 		end
-	else
-		self.animations[key] = nil
-		self.property_orders[key] = nil
 	end
 	
 	self:on_animations_changed()
@@ -63,8 +68,8 @@ end
 
 local function get_animation_keys(self)
 	local keys = {}
-	for k in pairs(self.animations) do
-		add(keys, k)
+	for i, k in ipairs(self.animation_order.keys) do
+		keys[i] = k
 	end
 	return keys
 end

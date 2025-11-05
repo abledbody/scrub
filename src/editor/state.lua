@@ -5,6 +5,36 @@ local Properties = require"src/editor/properties"
 local Events = require"src/editor/events"
 local new_index_map = require"src/index_map"
 
+local function import_animation_order(imported_order, animations)
+	if type(imported_order) != "table" then
+		local keys = {}
+		
+		for k, _ in pairs(animations) do
+			add(keys, k)
+		end
+		
+		return new_index_map(keys)
+	end
+	
+	local index_map = new_index_map()
+	
+	-- Ordered
+	for _, k in ipairs(imported_order) do
+		if animations[k] then
+			index_map:insert(k)
+		end
+	end
+	
+	-- Unordered
+	for k, _ in pairs(animations) do
+		if not index_map.indices[k] then
+			index_map:insert(k)
+		end
+	end
+	
+	return index_map
+end
+
 ---@param imported_property_orders table<string, [string]>
 ---@param animations table<string, Animation>
 local function import_property_orders(imported_property_orders, animations)
@@ -110,9 +140,15 @@ function m_editor_state:export_metadata()
 	end
 	
 	---@class EditorMetadata
+	---@field animation_order [string]
 	---@field property_orders table<string, [string]>
+	---@field last_animation string
+	---@field last_frame integer
 	return {
-		property_orders = exported_property_orders
+		animation_order = self.animation_order.keys,
+		property_orders = exported_property_orders,
+		last_animation = self.current_anim_key,
+		last_frame = self.animator.frame_i,
 	}
 end
 
@@ -122,11 +158,6 @@ end
 ---@return EditorState
 local function new_state(animations, palette, metadata)
 	local current_anim_key = next(animations) or "new_1"
-	
-	local property_orders = import_property_orders(
-		metadata and metadata.property_orders,
-		animations
-	)
 	
 	---@class EditorState
 	---@field show_pivot_state
@@ -150,18 +181,30 @@ local function new_state(animations, palette, metadata)
 		timeline_selection = {first = 1, last = 1}, ---@type {first:integer, last:integer}
 		lock_selection_to_frame = false, ---@type boolean
 		show_pivot_state = 0,
-		property_orders = property_orders,
+		property_orders = import_property_orders(metadata.property_orders, animations),
+		animation_order = import_animation_order(metadata.animation_order, animations),
 		drag_start = vec(0,0),
 		dragging = 0,
 		
-		on_animations_changed = nil, ---@type function?
-		on_frames_changed = nil, ---@type function?
-		on_frame_change = nil, ---@type function?
-		on_properties_changed = nil, ---@type function?
-		on_selection_changed = nil, ---@type function?
-		on_events_changed = nil, ---@type function?
+		on_animations_changed = function() end, ---@type function?
+		on_frames_changed = function() end, ---@type function?
+		on_frame_change = function() end, ---@type function?
+		on_properties_changed = function() end, ---@type function?
+		on_selection_changed = function() end, ---@type function?
+		on_events_changed = function() end, ---@type function?
 	}
-	return setmetatable(state, m_editor_state)
+	
+	setmetatable(state, m_editor_state)
+	
+	if metadata.last_animation and animations[metadata.last_animation] then
+		state:set_animation(metadata.last_animation)
+	end
+	
+	if metadata.last_frame and state.animator.anim.duration[metadata.last_frame] then
+		state:select_frame(metadata.last_frame)
+	end
+	
+	return state
 end
 
 return {

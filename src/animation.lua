@@ -75,9 +75,7 @@ local function reset(self, frame)
 end
 
 local c_animator = {
-	__index = function(self, key)
-		return key ~= "anim" and fetch(self, key)
-	end
+	__index = fetch,
 }
 
 --- Creates a new animator.
@@ -100,8 +98,8 @@ local function new_animator(anim)
 		ended = false,
 		events = {},
 		
-		advance = advance,
-		reset = reset,
+		advance = advance, ---@type fun(self:Animator, dt:number)
+		reset = reset, ---@type fun(self:Animator, frame?:number)
 	}
 	return setmetatable(animator, c_animator)
 end
