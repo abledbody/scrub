@@ -75,7 +75,13 @@ local function reset(self, frame)
 end
 
 local c_animator = {
-	__index = fetch,
+	__index = function(self, key)
+		-- The only value in Animator that is valid to be nil is anim.
+		-- We can safely assume all other misses are attempts at getting properties.
+		if key ~= "anim" then
+			return fetch(self, key)
+		end
+	end,
 }
 
 --- Creates a new animator.
@@ -124,3 +130,4 @@ return {
 	new_animator = new_animator,
 	animation_by_rule = animation_by_rule,
 }
+
