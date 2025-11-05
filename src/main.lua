@@ -46,7 +46,8 @@ end
 function _init()
 	window{
 		tabbed = true,
-		icon = --[[pod_type="gfx"]] unpod("b64:bHo0ACkAAAAsAAAA8AJweHUAQyAICASABwAHAAcgFwYAYQA3AAcARwoAARAAcCAHAAcAB4A=")
+		icon =
+--[[pod_type="gfx"]] unpod("b64:bHo0ACkAAAAsAAAA8AJweHUAQyAICASABwAHAAcgFwYAYQA3AAcARwoAARAAcCAHAAcAB4A=")
 	}
 	
 	local sw, sh = get_display():attribs()
@@ -66,16 +67,20 @@ function _init()
 	
 	---@return table<string, Animation>
 	local function save_working_file()
-		return editor_state.animations
+		return editor_state.animations, editor_state:export_metadata()
 	end
 	
 	---@param item_1 table<string, Animation>?
-	local function load_working_file(item_1)
+	local function load_working_file(item_1, metadata)
 		if item_1 and type(item_1) ~= "table" then
 			notify("Failed to load working file.")
 			item_1 = nil
 		end
-		editor_state = Editor.new_state(item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}}, palette)
+		editor_state = Editor.new_state(
+			item_1 or {animation_1 = {sprite = {0}, duration = {0.1}}},
+			palette,
+			metadata
+		)
 		state = new_app_state(editor_state, gfx_cache)
 		editor_state:clean_events()
 	end

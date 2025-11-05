@@ -90,9 +90,9 @@ local function initialize(editor, gfx_cache)
 					editor:rename_animation(value)
 					self.item = value
 				end,
-				click = function(self)
+				release = function(self)
 					if editor.current_anim_key == self.item then
-						Field.click(self)
+						Field.release(self)
 					else
 						editor:set_animation(self.item)
 					end

@@ -1,15 +1,24 @@
 local StringUtils = require"src/string_utils"
 
+-- It's important that the order of each property be preserved.
+
 ---@param self EditorState
----@return [{key: string, value: string}]
+---@return [{key: string, value: string, order: integer}]
 local function get_property_strings(self)
-	local properties = {}
 	local source_frame = self.timeline_selection.first
-	for k, v in pairs(self.animations[self.current_anim_key]) do
+	local anim = self.animations[self.current_anim_key]
+	local keys = self.property_orders[self.current_anim_key].keys
+	
+	local properties = {}
+	for i, k in ipairs(keys) do
 		if k ~= "events" then
-			add(properties, {key = k, value = StringUtils.value_to_string(v[source_frame])})
+			properties[i] = {
+				key = k,
+				value = StringUtils.value_to_string(anim[k][source_frame])
+			}
 		end
 	end
+	
 	return properties
 end
 
@@ -34,6 +43,7 @@ local function rename_property(self, key, new_key)
 	
 	animation[new_key] = animation[key]
 	animation[key] = nil
+	self.property_orders[self.current_anim_key]:replace_key(key, new_key)
 	
 	self:on_properties_changed()
 end
@@ -64,6 +74,7 @@ local function create_property(self)
 	local key = StringUtils.next_name("new", function(key) return animation[key] end)
 	
 	animation[key] = {}
+	self.property_orders[self.current_anim_key]:insert(key)
 	
 	self:on_properties_changed()
 	return key
@@ -77,6 +88,7 @@ local function remove_property(self, key)
 	local animation = self.animations[self.current_anim_key]
 	if not animation[key] then return end
 	animation[key] = nil
+	assert(self.property_orders[self.current_anim_key]:remove(key))
 	
 	self:on_properties_changed()
 end

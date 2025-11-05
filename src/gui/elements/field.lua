@@ -23,7 +23,7 @@ local function draw(self)
 	end
 end
 
-local function click(self)
+local function release(self)
 	self:set_keyboard_focus(true)
 	self.str = self:get()
 	self:update_cursor(#self.str)
@@ -66,14 +66,14 @@ local function attach(self, el)
 	-- Draw gets set during attach. I don't know why, but to be on the safe side,
 	-- we handle the other defaulted functions here too.
 	local draw = el.draw or draw
-	local click = el.click or click
+	local release = el.release or release
 	local update = el.update or update
 	
 	el = self:attach(el)
 	el.offset = 0
 	el.str = el:get()
 	el.draw = draw
-	el.click = click
+	el.release = release
 	el.update = update
 	el.cursor = "pointer"
 	
@@ -97,6 +97,6 @@ local function attach(self, el)
 end
 
 return {
-	click = click,
+	release = release,
 	attach = attach,
 }
