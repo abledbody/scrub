@@ -1,17 +1,19 @@
+local fmt = string.format
+
 ---Converts a parseable string into a value.
 ---@param str string
 ---@return boolean|string|userdata|number|nil
+---@return boolean success
 local function string_to_value(str)
 	assert(type(str) == "string", "Expected string, got " .. type(str))
 	
 	local whitespaceless = str:gsub("%s+", "")
-	local value
 	
 	local number = tonumber(whitespaceless)
-	if number then return number end
-	if whitespaceless == "nil" or value == "" then return nil end
-	if whitespaceless == "true" then return true end
-	if whitespaceless == "false" then return false end
+	if number then return number, true end
+	if whitespaceless == "nil" or str == "" then return nil, true end
+	if whitespaceless == "true" then return true, true end
+	if whitespaceless == "false" then return false, true end
 	
 	do
 		local delimiter_contents = whitespaceless:match("^%((.+)%)$")
@@ -25,11 +27,16 @@ local function string_to_value(str)
 			table.insert(components, component)
 		end
 		
-		return vec(unpack(components))
+		return vec(unpack(components)), true
 	end
 	::skip_vector::
 	
-	return str
+	local string_contents = str:match("^\".*\"$")
+	if string_contents then
+		return str:sub(2, -2), true
+	end
+	
+	return nil, false
 end
 
 ---Converts a value of a parseable type into a string.
@@ -38,11 +45,13 @@ end
 local function value_to_string(value)
 	local value_type = type(value)
 	
-	if value_type ~= "userdata" then
-		return tostr(value)
+	if value_type == "string" then
+		return fmt("\"%s\"", value)
+	elseif value_type == "userdata" then
+		return fmt("(" .. string.rep("%.15g", #value, ",") .. ")", value:get())
 	end
 	
-	return string.format("(" .. string.rep("%.15g", #value, ",") .. ")", value:get())
+	return tostr(value)
 end
 
 ---@param basis string

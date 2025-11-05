@@ -127,8 +127,15 @@ local function set_event_by_string(self, key, str)
 	local events = self.animations[self.current_anim_key].events
 	if not events then return end
 	
-	local value = StringUtils.string_to_value(str)
-	if value == nil then return end
+	local value, valid = StringUtils.string_to_value(str)
+	if not valid then
+		notify("Not a valid value. If you're trying to write a string, use quotation marks.")
+		return
+	end
+	if valid == nil then
+		notify("Events cannot have a value of nil.")
+		return
+	end
 	
 	for i in self:iterate_selection() do
 		local frame_events = events[i]

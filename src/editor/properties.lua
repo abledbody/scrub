@@ -52,7 +52,11 @@ end
 ---@param key string
 ---@param str string
 local function set_property_by_string(self, key, str)
-	local value = StringUtils.string_to_value(str)
+	local value, valid = StringUtils.string_to_value(str)
+	if not valid then
+		notify("Not a valid value. If you're trying to write a string, use quotation marks.")
+		return
+	end
 	if key == "duration" and (type(value) ~= "number" or value <= 0) then
 		notify("Duration must be a positive number.")
 		return

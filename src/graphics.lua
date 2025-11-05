@@ -44,15 +44,17 @@ end
 ---@alias GfxData [{bmp:userdata}]
 
 ---Fetches a gfx file by its index, caching it if it hasn't alredy been loaded.
----@param gfx_cache table<integer, GfxData>
+---@param gfx_cache table<integer, GfxData|false>
 ---@param gfx_file_index integer The index of the gfx file to fetch.
 ---@return GfxData? gfx_data The gfx file data.
 local function get_indexed_gfx(gfx_cache, gfx_file_index)
-	local gfx_data = gfx_cache and gfx_cache[gfx_file_index]
+	local gfx_data = gfx_cache[gfx_file_index]
+	if gfx_data == false then return nil end
 	if gfx_data then return gfx_data end
 	
 	gfx_data = fetch("/ram/cart/gfx/" .. gfx_file_index .. ".gfx")
-	gfx_cache[gfx_file_index] = gfx_data
+	-- Failed fetches plug a false into the cache to avoid repeated attempts.
+	gfx_cache[gfx_file_index] = gfx_data or false
 	
 	return gfx_data
 end
