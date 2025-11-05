@@ -1,4 +1,5 @@
 local StringUtils = require"src/string_utils"
+local new_index_map = require"src/index_map"
 
 ---Sets the current animation to the one with the given key.
 ---@param self EditorState
@@ -30,6 +31,7 @@ local function create_animation(self)
 	local anim_name = StringUtils.next_name("new", function(key) return self.animations[key] end)
 	
 	self.animations[anim_name] = {sprite = {0}, duration = {0.1}}
+	self.property_orders[anim_name] = new_index_map({"duration"})
 	self:set_animation(anim_name)
 	
 	self:on_animations_changed()
@@ -45,6 +47,7 @@ local function remove_animation(self, key)
 	if key == self.current_anim_key then
 		local next_key = next(self.animations, key) or next(self.animations)
 		self.animations[key] = nil
+		self.property_orders[key] = nil
 		if next_key and next_key ~= self.current_anim_key then
 			self:set_animation(next_key)
 		else
@@ -52,6 +55,7 @@ local function remove_animation(self, key)
 		end
 	else
 		self.animations[key] = nil
+		self.property_orders[key] = nil
 	end
 	
 	self:on_animations_changed()
