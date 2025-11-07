@@ -128,6 +128,12 @@ function _update()
 		if keyp("delete") then
 			editor:remove_frame()
 		end
+		if key("ctrl") and keyp("z") then
+			editor.undo_stack:undo()
+		end
+		if key("ctrl") and (keyp("y") or key("shift") and keyp("z"))then
+			editor.undo_stack:redo()
+		end
 	end
 	
 	if editor.lock_selection_to_frame then

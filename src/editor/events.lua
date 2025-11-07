@@ -72,6 +72,7 @@ local function create_event(self)
 	end
 	
 	self:on_events_changed()
+	self.undo_stack:checkpoint()
 	return key
 end
 
@@ -91,6 +92,7 @@ local function remove_event(self, key)
 	self:clean_events()
 	
 	self:on_events_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---@param self EditorState
@@ -118,6 +120,7 @@ local function rename_event(self, key, new_key)
 	end
 	
 	self:on_events_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---@param self EditorState
@@ -145,6 +148,7 @@ local function set_event_by_string(self, key, str)
 	end
 	
 	self:on_events_changed()
+	self.undo_stack:checkpoint()
 end
 
 return {

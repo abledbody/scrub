@@ -152,6 +152,52 @@ function m_editor_state:export_metadata()
 	}
 end
 
+function m_editor_state:on_reset()
+	self:on_animations_changed()
+	self:on_frames_changed()
+	self:on_properties_changed()
+	self:on_events_changed()
+	self:on_selection_changed()
+	self:on_frame_change()
+end
+
+function m_editor_state:get_state()
+	local exported_property_orders = {}
+	for anim_key, order in pairs(self.property_orders) do
+		exported_property_orders[anim_key] = order.keys
+	end
+	
+	return {
+		animations = self.animations,
+		
+		property_orders = exported_property_orders,
+		animation_order = self.animation_order.keys,
+		
+		current_anim_key = self.current_anim_key,
+		frame_i = self.animator.frame_i,
+		
+		timeline_selection = self.timeline_selection,
+	}
+end
+
+function m_editor_state:set_state(loaded_state)
+	self.animations = loaded_state.animations
+	self.property_orders = import_property_orders(loaded_state.property_orders, self.animations)
+	self.animation_order = import_animation_order(loaded_state.animation_order, self.animations)
+	
+	self.playing = false
+	
+	self.drag_start = vec(0,0)
+	self.dragging = 0
+	
+	self:set_animation(loaded_state.current_anim_key)
+	self:set_frame(loaded_state.frame_i)
+	
+	self.timeline_selection = loaded_state.timeline_selection
+	
+	self:on_reset()
+end
+
 ---@param animations table<string, Animation>
 ---@param palette userdata
 ---@param metadata EditorMetadata
@@ -175,16 +221,21 @@ local function new_state(animations, palette, metadata)
 		animator = Animation.new_animator(animations[current_anim_key]), ---@type Animator
 		animations = animations, ---@type table<string, Animation>
 		current_anim_key = current_anim_key, ---@type string
+		
 		gfx_cache = {}, ---@type table<number, [{bmp:userdata}]>
 		palette = palette, ---@type userdata
+		
 		playing = false, ---@type boolean
 		timeline_selection = {first = 1, last = 1}, ---@type {first:integer, last:integer}
 		lock_selection_to_frame = false, ---@type boolean
-		show_pivot_state = 0,
+		
 		property_orders = import_property_orders(metadata.property_orders, animations),
 		animation_order = import_animation_order(metadata.animation_order, animations),
+		
 		drag_start = vec(0,0),
 		dragging = 0,
+		
+		show_pivot_state = 0,
 		
 		on_animations_changed = function() end, ---@type function?
 		on_frames_changed = function() end, ---@type function?
@@ -192,9 +243,20 @@ local function new_state(animations, palette, metadata)
 		on_properties_changed = function() end, ---@type function?
 		on_selection_changed = function() end, ---@type function?
 		on_events_changed = function() end, ---@type function?
+		on_animation_changed = function() end, ---@type function?
 	}
 	
 	setmetatable(state, m_editor_state)
+	
+	
+	state.undo_stack = create_undo_stack(
+		function()
+			--set_clipboard(pod(state:get_state(), 0))
+			return state:get_state()
+		end,
+		function(loaded_state) state:set_state(loaded_state) end,
+		0x81
+	)
 	
 	if metadata.last_animation and animations[metadata.last_animation] then
 		state:set_animation(metadata.last_animation)

@@ -46,6 +46,7 @@ local function rename_property(self, key, new_key)
 	self.property_orders[self.current_anim_key]:replace_key(key, new_key)
 	
 	self:on_properties_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---@param self EditorState
@@ -68,6 +69,7 @@ local function set_property_by_string(self, key, str)
 	end
 	
 	self:on_properties_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---@param self EditorState
@@ -81,6 +83,7 @@ local function create_property(self)
 	self.property_orders[self.current_anim_key]:insert(key)
 	
 	self:on_properties_changed()
+	self.undo_stack:checkpoint()
 	return key
 end
 
@@ -95,6 +98,7 @@ local function remove_property(self, key)
 	assert(self.property_orders[self.current_anim_key]:remove(key))
 	
 	self:on_properties_changed()
+	self.undo_stack:checkpoint()
 end
 
 return {

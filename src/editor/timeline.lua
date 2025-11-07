@@ -76,6 +76,7 @@ local function insert_frame(self)
 	
 	self:select_frame(sel_last + 1)
 	self:on_frames_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---@param self EditorState
@@ -104,6 +105,7 @@ local function remove_frame(self)
 	self:on_selection_changed()
 	
 	self:on_frames_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---@param self EditorState

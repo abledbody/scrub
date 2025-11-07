@@ -22,6 +22,7 @@ local function rename_animation(self, name)
 	self.current_anim_key = name
 	
 	self:on_animations_changed()
+	self.undo_stack:checkpoint()
 end
 
 ---Creates a new animation with a unique name and sets it as the current animation.
@@ -31,11 +32,12 @@ local function create_animation(self)
 	local anim_name = StringUtils.next_name("new", function(key) return self.animations[key] end)
 	
 	self.animations[anim_name] = {sprite = {0}, duration = {0.1}}
-	self.property_orders[anim_name] = new_index_map({"duration"})
+	self.property_orders[anim_name] = new_index_map({"duration", "sprite"})
 	self.animation_order:insert(anim_name)
 	self:set_animation(anim_name)
 	
 	self:on_animations_changed()
+	self.undo_stack:checkpoint()
 	return anim_name
 end
 
@@ -64,6 +66,7 @@ local function remove_animation(self, key)
 	end
 	
 	self:on_animations_changed()
+	self.undo_stack:checkpoint()
 end
 
 local function get_animation_keys(self)
