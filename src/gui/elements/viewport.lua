@@ -54,13 +54,14 @@ local function attach_viewport(self, editor, gfx_cache, el)
 		
 		if editor.show_pivot_state == 1 and not editor.playing or editor.show_pivot_state == 0 then
 			pal(7, Lightest)
+			pal(1, Darkest)
 			
-			spr(20, -4, -4)
 			for v in all(vectors) do
-				spr(19, self.zoom * v.x - 4, self.zoom * v.y - 4)
+				spr(19, self.zoom * v.x - 5, self.zoom * v.y - 5)
 			end
+			spr(20, -4, -4)
 			
-			pal(7)
+			pal(0)
 		end
 	end
 	
