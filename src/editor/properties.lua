@@ -101,10 +101,25 @@ local function remove_property(self, key)
 	self.undo_stack:checkpoint()
 end
 
+---@param self EditorState
+---@param key string
+---@param dir integer
+local function reorder_property(self, key, dir)
+	local order = self.property_orders[self.current_anim_key]
+	local index = order.indices[key]
+	local new_index = index + dir
+	
+	assert(order:remove(key))
+	order:insert(key, new_index)
+	
+	self:on_properties_changed()
+end
+
 return {
 	get_property_strings = get_property_strings,
 	rename_property = rename_property,
 	set_property_by_string = set_property_by_string,
 	create_property = create_property,
 	remove_property = remove_property,
+	reorder_property = reorder_property,
 }

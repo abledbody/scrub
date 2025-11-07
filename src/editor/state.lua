@@ -116,6 +116,7 @@ local m_editor_state = {
 	set_property_by_string = Properties.set_property_by_string,
 	create_property        = Properties.create_property,
 	remove_property        = Properties.remove_property,
+	reorder_property       = Properties.reorder_property,
 
 	initialize_events   = Events.initialize_events,
 	clean_events        = Events.clean_events,

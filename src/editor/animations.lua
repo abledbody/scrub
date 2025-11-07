@@ -50,7 +50,9 @@ local function remove_animation(self, key)
 	local deleting_current = key == self.current_anim_key
 	local next_key
 	if deleting_current then
-		next_key = next(self.animations, key) or next(self.animations)
+		local next_index = self.animation_order.indices[key] + 1
+		if next_index > #self.animation_order.keys then next_index -= 2 end
+		next_key = self.animation_order.keys[next_index]
 	end
 	
 	self.animations[key] = nil

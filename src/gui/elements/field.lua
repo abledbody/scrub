@@ -1,3 +1,5 @@
+local StringUtils = require"src/string_utils"
+
 local function draw(self)
 	local has_keyboard_focus = self:has_keyboard_focus()
 	
@@ -23,10 +25,10 @@ local function draw(self)
 	end
 end
 
-local function release(self)
+local function release(self, ctx)
 	self:set_keyboard_focus(true)
 	self.str = self:get()
-	self:update_cursor(#self.str)
+	self:update_cursor(StringUtils.get_char_position(self.str, ctx.mx) - 1)
 	readtext(true)
 end
 
@@ -63,8 +65,8 @@ local function update(self)
 end
 
 local function attach(self, el)
-	-- Draw gets set during attach. I don't know why, but to be on the safe side,
-	-- we handle the other defaulted functions here too.
+	-- Draw gets set during the attach call. I don't know why, but to be on the
+	-- safe side, we handle the other defaulted functions here too.
 	local draw = el.draw or draw
 	local release = el.release or release
 	local update = el.update or update

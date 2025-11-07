@@ -66,8 +66,47 @@ local function next_name(basis, fetch)
 	return name
 end
 
+---@param str string
+---@param d_mouse_x userdata
+---@return integer
+local function get_char_position(str, d_mouse_x)
+	local dummy = userdata("u8", 1, 1)
+	local prev_cam = {camera()}
+	local prev_draw_target = set_draw_target(dummy)
+	
+	local result = -1
+	local range = {1, #str + 1}
+	while true do
+		local sample = (range[1] + range[2]) // 2
+		local x = print(str:sub(1, sample), 0, 0) or 0
+		
+		if d_mouse_x == x then
+			-- x is on right side of character, sample is on left.
+			result = sample + 1
+			break
+		end
+		
+		if range[1] == range[2] then
+			local left_x = print(str:sub(1, range[1] - 1), 0, 0) or 0
+			result = d_mouse_x <= (left_x + x) * 0.5 and range[1] or range[1] + 1
+			break
+		end
+		
+		if d_mouse_x < x then
+			range[2] = sample
+		else
+			range[1] = sample + 1
+		end
+	end
+	
+	set_draw_target(prev_draw_target)
+	camera(unpack(prev_cam))
+	return result
+end
+
 return {
 	string_to_value = string_to_value,
 	value_to_string = value_to_string,
 	next_name = next_name,
+	get_char_position = get_char_position,
 }

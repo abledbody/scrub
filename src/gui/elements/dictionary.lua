@@ -18,24 +18,35 @@ local function attach(self, el)
 		width = el.list.width,
 		height = el.list.height,
 		
-		populate = GuiUtils.populate,
-		height_equation = function(_, len) return len * 10 end,
+		populate = function(self)
+			for i = 1, #self.reorder_buttons do
+				self:detach(self.reorder_buttons[i])
+			end
+			self.reorder_buttons = {}
+			return GuiUtils.populate(self)
+		end,
+		height_equation = function(_, len) return len * 11 end,
+		reorder_buttons = {},
 		
 		get = el.get_dictionary,
 		set_key = el.set_key,
 		set_value = el.set_value,
 		get_removable = el.get_removable,
+		get_reorderable = el.get_reorderable,
 		remove = el.remove,
+		reorder = el.reorder,
 		
 		factory = function(self, i, item)
 			local key = item.key
 			
+			local room_for_reorder_buttons = (self.get_reorderable and 7 or 0)
+			
 			local row = self:attach{
-				x = 0, y = (i - 1) * 10,
-				width = self.width - 9, height = 10,
+				x = 1 + room_for_reorder_buttons, y = (i - 1) * 11,
+				width = self.width - 10 - room_for_reorder_buttons, height = 10,
 			}
 			
-			local field_width = (row.width - 8) * 0.5
+			local field_width = (row.width - 9) * 0.5
 			
 			Field.attach(row, {
 				x = 0,
@@ -52,7 +63,7 @@ local function attach(self, el)
 			})
 			
 			Field.attach(row, {
-				x = field_width,
+				x = 1 + field_width,
 				y = 0,
 				width = field_width,
 				height = 10,
@@ -73,6 +84,19 @@ local function attach(self, el)
 					draw = el.draw_remove_button,
 					click = function() self.remove(key) end,
 				}
+			end
+			
+			if self.get_reorderable
+				and self.get_reorderable(i)
+				and self.get_reorderable(i + 1)
+			then
+				add(self.reorder_buttons, el.container:attach{
+					x = 1, y = row.y + 6,
+					width = 5, height = 8,
+					cursor = "pointer",
+					draw = el.draw_swap_button,
+					click = function() self.reorder(key, 1) end,
+				})
 			end
 			
 			return row

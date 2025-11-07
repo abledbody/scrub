@@ -25,6 +25,7 @@ end
 
 local function draw_add_button(self) spr(2) end
 local function draw_remove_button(self) spr(3) end
+local function draw_swap_button(self) spr(27) end
 
 ---@param editor EditorState
 local function initialize(editor, gfx_cache)
@@ -90,9 +91,9 @@ local function initialize(editor, gfx_cache)
 					editor:rename_animation(value)
 					self.item = value
 				end,
-				release = function(self)
+				release = function(self, ctx)
 					if editor.current_anim_key == self.item then
-						Field.release(self)
+						Field.release(self, ctx)
 					else
 						editor:set_animation(self.item)
 					end
@@ -126,7 +127,7 @@ local function initialize(editor, gfx_cache)
 	animation_list_container:populate()
 	
 	local add_animation_button = animations_panel:attach{
-		x = 2, y = animations_panel.height - 9,
+		x = animations_panel.width - 10, y = animations_panel.height - 10,
 		width = 8, height = 8,
 		col = Lightest,
 		cursor = "pointer",
@@ -198,13 +199,19 @@ local function initialize(editor, gfx_cache)
 		draw = draw_dictionary,
 		draw_add_button = draw_add_button,
 		draw_remove_button = draw_remove_button,
+		draw_swap_button = draw_swap_button,
 		
 		get_dictionary = function() return editor:get_property_strings() end,
 		set_key = function(key, value) editor:rename_property(key, value) end,
 		set_value = function(key, value) editor:set_property_by_string(key, value) end,
-		get_removable = function(key) return key ~= "duration" end,
+		get_removable = function(key) return key != "duration" end,
+		get_reorderable = function(i)
+			local order = editor.property_orders[editor.current_anim_key]
+			return i <= #order.keys and order.keys[i] != "duration"
+		end,
 		create = function() return editor:create_property() end,
 		remove = function(key) editor:remove_property(key) end,
+		reorder = function(key, dir) editor:reorder_property(key, dir) end,
 	})
 	
 	local events = Dictionary.attach(gui, {
