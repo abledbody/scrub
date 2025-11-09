@@ -64,11 +64,30 @@ local function attach_viewport(self, editor, gfx_cache, el)
 			pal(0)
 		end
 	end
+
+	local function clamp_view(self)
+		local pivot = editor.animator.pivot or vec(0, 0)
+
+		local low_x, low_y = -self.width * 0.5, -self.height * 0.5
+		local high_x, high_y = -low_x, -low_y
+
+		local sprite_i = editor.animator.sprite
+		if type(sprite_i) == "number" then
+			local sprite = Graphics.get_sprite(editor.gfx_cache, sprite_i)
+			if sprite then
+				low_x = min(low_x, low_x - pivot.x * self.zoom)
+				low_y = min(low_y, low_y - pivot.y * self.zoom)
+				high_x = max(high_x, high_x + (sprite:width() - pivot.x) * self.zoom)
+				high_y = max(high_y, high_y + ((sprite:height() or 1) - pivot.y) * self.zoom)
+			end
+		end
+		self.scroll.x = mid(low_x, self.scroll.x, high_x)
+		self.scroll.y = mid(low_y, self.scroll.y, high_y)
+	end
 	
 	function el:drag(msg)
 		self.scroll -= vec(msg.dx, msg.dy)
-		self.scroll.x = mid(-self.width * 0.5, self.scroll.x, self.width * 0.5)
-		self.scroll.y = mid(-self.height * 0.5, self.scroll.y, self.height * 0.5)
+		clamp_view(self)
 	end
 	
 	function el:hover(msg)
@@ -78,8 +97,11 @@ local function attach_viewport(self, editor, gfx_cache, el)
 		
 		if wy == 0 then return end
 		
-		self.zoom += wy
-		self.zoom = mid(1, self.zoom, 32)
+		local new_zoom = mid(0.25, self.zoom * 2 ^ wy, 16)
+		self.scroll = self.scroll / self.zoom * new_zoom
+
+		self.zoom = new_zoom
+		clamp_view(self)
 	end
 	
 	function el:viewport_to_local()
