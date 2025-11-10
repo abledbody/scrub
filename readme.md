@@ -12,7 +12,7 @@ Scrub will automatically detect the properties `sprite` and `pivot`, and will sh
 Scrub supports properties and events with values that are:
 - numbers, such as `3.5`
 - userdata vectors, such as `(3.5,8)`
-- strings, such as `foo`
+- strings, such as `"foo"`
 - booleans, written as `true` or `false`
 - nil, written as `nil` (properties only)
 
