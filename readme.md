@@ -29,7 +29,6 @@ Scrub supports custom palettes in the same format that OkPal uses.
 ## Planned features
 - Automatic sprite sequences
 - Allow editing 2D vectors and the pivot from the viewport
-- Undo
 - Custom playback preview speed
 - Specify which properties are the sprite/pivot
 - Show multiple sprites on the same frame
