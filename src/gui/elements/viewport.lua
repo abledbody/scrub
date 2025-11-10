@@ -64,13 +64,13 @@ local function attach_viewport(self, editor, gfx_cache, el)
 			pal(0)
 		end
 	end
-
+	
 	local function clamp_view(self)
 		local pivot = editor.animator.pivot or vec(0, 0)
-
+		
 		local low_x, low_y = -self.width * 0.5, -self.height * 0.5
 		local high_x, high_y = -low_x, -low_y
-
+		
 		local sprite_i = editor.animator.sprite
 		if type(sprite_i) == "number" then
 			local sprite = Graphics.get_sprite(editor.gfx_cache, sprite_i)
@@ -98,8 +98,11 @@ local function attach_viewport(self, editor, gfx_cache, el)
 		if wy == 0 then return end
 		
 		local new_zoom = mid(0.25, self.zoom * 2 ^ wy, 16)
-		self.scroll = self.scroll / self.zoom * new_zoom
-
+		local m_pos = vec(msg.mx, msg.my)
+		local center = vec(self.width, self.height) * 0.5
+		local mouse_offset = m_pos - center
+		self.scroll = (self.scroll + mouse_offset) / self.zoom * new_zoom - mouse_offset
+		
 		self.zoom = new_zoom
 		clamp_view(self)
 	end
