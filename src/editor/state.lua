@@ -4,6 +4,7 @@ local Animations = require"src/editor/animations"
 local Properties = require"src/editor/properties"
 local Events = require"src/editor/events"
 local new_index_map = require"src/index_map"
+local callback = require"src/callback"
 
 local function import_animation_order(imported_order, animations)
 	if type(imported_order) != "table" then
@@ -212,12 +213,6 @@ local function new_state(animations, palette, metadata)
 	---|1: Show when paused
 	---|2: Hide
 	---@field property_orders table<string, IndexMap>
-	---@field on_animations_changed function?
-	---@field on_frames_changed function?
-	---@field on_frame_change function?
-	---@field on_properties_changed function?
-	---@field on_selection_changed function?
-	---@field on_events_changed function?
 	local state = {
 		animator = Animation.new_animator(animations[current_anim_key]), ---@type Animator
 		animations = animations, ---@type table<string, Animation>
@@ -238,13 +233,13 @@ local function new_state(animations, palette, metadata)
 		
 		show_pivot_state = 0,
 		
-		on_animations_changed = function() end, ---@type function?
-		on_frames_changed = function() end, ---@type function?
-		on_frame_change = function() end, ---@type function?
-		on_properties_changed = function() end, ---@type function?
-		on_selection_changed = function() end, ---@type function?
-		on_events_changed = function() end, ---@type function?
-		on_animation_changed = function() end, ---@type function?
+		on_animations_changed = callback(), ---@type Callback<EditorState>
+		on_frames_changed     = callback(), ---@type Callback<EditorState>
+		on_frame_change       = callback(), ---@type Callback<EditorState>
+		on_properties_changed = callback(), ---@type Callback<EditorState>
+		on_selection_changed  = callback(), ---@type Callback<EditorState>
+		on_events_changed     = callback(), ---@type Callback<EditorState>
+		on_animation_changed  = callback(), ---@type Callback<EditorState>
 	}
 	
 	setmetatable(state, m_editor_state)

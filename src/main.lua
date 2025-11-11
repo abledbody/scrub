@@ -28,10 +28,10 @@ local function new_app_state(editor_state, gfx_cache)
 		self:set_timeline_selection(self.timeline_selection.first, self.timeline_selection.last)
 		gui_data.on_frames_changed()
 	end
-	editor_state.on_frame_change = gui_data.on_frame_change
-	editor_state.on_properties_changed = gui_data.on_properties_changed
-	editor_state.on_selection_changed = gui_data.on_selection_changed
-	editor_state.on_events_changed = gui_data.on_events_changed
+	editor_state.on_frame_change:sub(gui_data.on_frame_change)
+	editor_state.on_properties_changed:sub(gui_data.on_properties_changed)
+	editor_state.on_selection_changed:sub(gui_data.on_selection_changed)
+	editor_state.on_events_changed:sub(gui_data.on_events_changed)
 	
 	---@class AppState
 	local state = {
