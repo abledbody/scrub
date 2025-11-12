@@ -2,6 +2,100 @@ local GuiUtils = require"src/gui/utils"
 local Scrollbars = require"src/gui/elements/scrollbars"
 local Field = require"src/gui/elements/field"
 
+---@param key string
+---@param pad_left integer
+---@param pad_right integer
+local function attach_fields(self, row, item, key, pad_left, pad_right)
+	local field_width = (row.width - pad_right - pad_left - 1) * 0.5
+	
+	local left_width = field_width // 1
+	Field.attach(row, {
+		x = pad_left,
+		y = 0,
+		width = left_width,
+		height = 10,
+		fill_col = 0,
+		text_col = 7,
+		fill_col_focused = 19,
+		text_col_focused = 7,
+		blinker = self.blinker,
+		get = function() return key end,
+		set = function(_, value) self.set_key(key, value) end,
+	})
+	
+	local right_width = -(field_width // -1)
+	Field.attach(row, {
+		x = row.width - pad_right - right_width,
+		y = 0,
+		width = right_width,
+		height = 10,
+		fill_col = 0,
+		text_col = 7,
+		fill_col_focused = 19,
+		text_col_focused = 7,
+		blinker = self.blinker,
+		get = function() return item.value end,
+		set = function(_, value) self.set_value(key, value) end,
+	})
+end
+
+---@param key string
+local function attach_remove_button(self, row, key, x)
+	if self.get_removable and self.get_removable(key) then
+		return row:attach{
+			x = x, y = 2,
+			width = 7, height = 7,
+			cursor = "pointer",
+			draw = self.draw_remove_button,
+			click = function() self.remove(key) end,
+		}
+	end
+end
+
+---@param i integer
+---@param key string
+local function attach_reorder_button(self, row, i, key)
+	if self.get_reorderable
+		and self.get_reorderable(i)
+		and self.get_reorderable(i + 1)
+	then
+		local button = self:attach{
+			x = 1, y = row.y + 6,
+			width = 5, height = 8,
+			cursor = "pointer",
+			draw = self.draw_swap_button,
+			click = function() self.reorder(key, 1) end,
+		}
+		add(self.reorder_buttons, button)
+		return button
+	end
+end
+
+---@param i integer
+---@param pad_left integer
+---@param pad_right integer
+local function attach_row(self, i, pad_left, pad_right)
+	return self:attach{
+		x = pad_left, y = (i - 1) * 11,
+		width = self.width - pad_right - pad_left, height = 10,
+	}
+end
+
+---@param i integer
+local function factory(self, i, item)
+	local key = item.key
+	
+	local room_for_reorder_buttons = (self.get_reorderable and 7 or 0)
+	
+	local row = attach_row(self, i, room_for_reorder_buttons, 8)
+	
+	attach_remove_button(self, row, key, row.width - 8)
+	attach_fields(self, row, item, key, 0, 9)
+	attach_reorder_button(self, row, i, key)
+	
+	return row
+end
+
 local function attach(self, el)
 	el = self:attach(el)
 	
@@ -35,72 +129,11 @@ local function attach(self, el)
 		get_reorderable = el.get_reorderable,
 		remove = el.remove,
 		reorder = el.reorder,
+		blinker = el.blinker,
+		draw_remove_button = el.draw_remove_button,
+		draw_swap_button = el.draw_swap_button,
 		
-		factory = function(self, i, item)
-			local key = item.key
-			
-			local room_for_reorder_buttons = (self.get_reorderable and 7 or 0)
-			
-			local row = self:attach{
-				x = 1 + room_for_reorder_buttons, y = (i - 1) * 11,
-				width = self.width - 10 - room_for_reorder_buttons, height = 10,
-			}
-			
-			local field_width = (row.width - 9) * 0.5
-			
-			Field.attach(row, {
-				x = 0,
-				y = 0,
-				width = field_width,
-				height = 10,
-				fill_col = 0,
-				text_col = 7,
-				fill_col_focused = 19,
-				text_col_focused = 7,
-				blinker = el.blinker,
-				get = function() return key end,
-				set = function(_, value) self.set_key(key, value) end,
-			})
-			
-			Field.attach(row, {
-				x = 1 + field_width,
-				y = 0,
-				width = field_width,
-				height = 10,
-				fill_col = 0,
-				text_col = 7,
-				fill_col_focused = 19,
-				text_col_focused = 7,
-				blinker = el.blinker,
-				get = function() return item.value end,
-				set = function(_, value) self.set_value(key, value) end,
-			})
-			
-			if self.get_removable and self.get_removable(key) then
-				row:attach{
-					x = row.width - 7, y = 2,
-					width = 7, height = 7,
-					cursor = "pointer",
-					draw = el.draw_remove_button,
-					click = function() self.remove(key) end,
-				}
-			end
-			
-			if self.get_reorderable
-				and self.get_reorderable(i)
-				and self.get_reorderable(i + 1)
-			then
-				add(self.reorder_buttons, el.container:attach{
-					x = 1, y = row.y + 6,
-					width = 5, height = 8,
-					cursor = "pointer",
-					draw = el.draw_swap_button,
-					click = function() self.reorder(key, 1) end,
-				})
-			end
-			
-			return row
-		end
+		factory = el.factory or factory,
 	}
 	
 	el.add_button = el:attach{
@@ -127,4 +160,9 @@ end
 
 return {
 	attach = attach,
+	factory = factory,
+	attach_fields = attach_fields,
+	attach_remove_button = attach_remove_button,
+	attach_reorder_button = attach_reorder_button,
+	attach_row = attach_row,
 }

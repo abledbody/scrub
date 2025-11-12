@@ -212,6 +212,8 @@ local function initialize(editor, gfx_cache)
 		create = function() return editor:create_property() end,
 		remove = function(key) editor:remove_property(key) end,
 		reorder = function(key, dir) editor:reorder_property(key, dir) end,
+		
+		factory = Dictionary.factory,
 	})
 	
 	local events = Dictionary.attach(gui, {
