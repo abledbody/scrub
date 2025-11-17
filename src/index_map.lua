@@ -8,6 +8,7 @@ m_index_map.__index = m_index_map
 
 ---@param self IndexMap
 ---@param key string
+---@return boolean
 function m_index_map:remove(key)
 	local last_index = #self.keys
 	
@@ -53,18 +54,17 @@ end
 ---@param old_key string
 ---@param new_key string
 function m_index_map:replace_key(old_key, new_key)
-	if self.indices[new_key] then error(fmt("Attempted to replace existing key '%s' with '%s'", old_key, new_key)) end
+	if self.indices[new_key] then error(fmt("Attempted to replace '%s' with existing key '%s'", old_key, new_key)) end
 	
 	local index = self.indices[old_key]
 	
 	self.keys[index] = new_key
 	self.indices[old_key] = nil
 	self.indices[new_key] = index
-	
-	return true
 end
 
 ---@param keys [string]?
+---@return IndexMap
 local function new_index_map(keys)
 	local index_map = {
 		indices = {},
