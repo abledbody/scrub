@@ -58,7 +58,7 @@ function _init()
 	local palette = fetch("/ram/cart/pal/0.pal")
 	if palette then
 		poke4(0x5100, palette:get())
-		Graphics.find_binary_cols(palette)
+		Lightest, Darkest = Graphics.find_binary_cols(palette)
 	end
 	poke4(0x5000, fetch(DATP .. "pal/0.pal"):get())
 	

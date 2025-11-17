@@ -24,7 +24,11 @@ local function set_scanline_palette(palette_i, first_y, last_y)
 	poke(0x5400 + first_byte_i, scanline_bytes:get())
 end
 
+---@param palette userdata
+---@return integer lightest
+---@return integer darkest
 local function find_binary_cols(palette)
+	local lightest, darkest
 	local lightest_mag = 0
 	local darkest_mag = 1000
 	for i = 0, 63 do
@@ -32,13 +36,15 @@ local function find_binary_cols(palette)
 		local col = vec(colnum & 0xFF, (colnum >> 8) & 0xFF, (colnum >> 16) & 0xFF)
 		local mag = col:magnitude()
 		if mag > lightest_mag then
-			Lightest = i
+			lightest = i
 			lightest_mag = mag
 		elseif mag < darkest_mag then
-			Darkest = i
+			darkest = i
 			darkest_mag = mag
 		end
 	end
+	
+	return lightest, darkest
 end
 
 ---@alias GfxData [{bmp:userdata}]
