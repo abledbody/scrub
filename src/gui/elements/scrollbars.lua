@@ -20,8 +20,7 @@ local function attach(self, attribs)
 		bar_offset = 0,
 		bar_length = 0,
 		cursor = "grab",
-		fgcol = attribs.fgcol or 35,
-		bgcol = attribs.bgcol or 33,
+		style = attribs.style,
 		
 		update = function(self, msg)
 			local container       = self.parent
@@ -59,36 +58,36 @@ local function attach(self, attribs)
 		end,
 		
 		draw = function(self, msg)
-			local bgcol = self.bgcol
-			local fgcol = self.fgcol
+			local fill_col = self.style:get"fill_col"
+			local symbol_col = self.style:get"symbol_col"
+			local indent_col = self.style:get"indent_col"
 			
-			rectfill(0, 0, self.width - 1, self.height - 1, bgcol | (fgcol << 8))
-			if self.bar_length > 0 then
-				if self.widthwise then
-					rectfill(self.bar_offset + 1, 1, self.bar_offset + self.bar_length - 1, self.height - 2, fgcol)
-				else
-					rectfill(1, self.bar_offset + 1, self.width - 2, self.bar_offset + self.bar_length - 1, fgcol)
-				end
+			rectfill(0, 0, self.width - 1, self.height - 1, fill_col | (symbol_col << 8))
+			if self.bar_length <= 0 then return end
+			
+			if self.widthwise then
+				rectfill(self.bar_offset + 1, 1, self.bar_offset + self.bar_length - 1, self.height - 2, symbol_col)
+			else
+				rectfill(1, self.bar_offset + 1, self.width - 2, self.bar_offset + self.bar_length - 1, symbol_col)
 			end
-			
-			-- lil grip thing; same colour as background
+		
 			local ll = self.bar_offset + self.bar_length / 2
 			if self.widthwise then
-				line(ll - 1, 2, ll - 1, self.height - 3, bgcol)
-				line(ll + 1, 2, ll + 1, self.height - 3, bgcol)
+				line(ll - 1, 2, ll - 1, self.height - 3, indent_col)
+				line(ll + 1, 2, ll + 1, self.height - 3, indent_col)
 				
-				pset(self.bar_offset + 1, 1, bgcol)
-				pset(self.bar_offset + self.bar_length - 1, 1, bgcol)
-				pset(self.bar_offset + 1, self.height - 2, bgcol)
-				pset(self.bar_offset + self.bar_length - 1, self.height - 2, bgcol)
+				pset(self.bar_offset + 1, 1, fill_col)
+				pset(self.bar_offset + self.bar_length - 1, 1, fill_col)
+				pset(self.bar_offset + 1, self.height - 2, fill_col)
+				pset(self.bar_offset + self.bar_length - 1, self.height - 2, fill_col)
 			else
-				line(2, ll - 1, self.width - 3, ll - 1, bgcol)
-				line(2, ll + 1, self.width - 3, ll + 1, bgcol)
+				line(2, ll - 1, self.width - 3, ll - 1, indent_col)
+				line(2, ll + 1, self.width - 3, ll + 1, indent_col)
 				
-				pset(1, self.bar_offset + 1, bgcol)
-				pset(self.width - 2, self.bar_offset + 1, bgcol)
-				pset(1, self.bar_offset + self.bar_length - 1, bgcol)
-				pset(self.width - 2, self.bar_offset + self.bar_length - 1, bgcol)
+				pset(1, self.bar_offset + 1, fill_col)
+				pset(self.width - 2, self.bar_offset + 1, fill_col)
+				pset(1, self.bar_offset + self.bar_length - 1, fill_col)
+				pset(self.width - 2, self.bar_offset + self.bar_length - 1, fill_col)
 			end
 		end,
 		drag = function(self, msg)

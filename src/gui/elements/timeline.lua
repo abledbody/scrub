@@ -82,7 +82,7 @@ local function attach(self, editor, el)
 		end,
 	}
 	
-	Scrollbars.attach(el.frame_area, {widthwise = true})
+	Scrollbars.attach(el.frame_area, {widthwise = true, style = el.style:get"scrollbar"})
 	
 	function el:align_buttons()
 		local sel_last = editor.timeline_selection.last

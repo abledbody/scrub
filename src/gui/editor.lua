@@ -53,6 +53,11 @@ local function initialize(editor, gfx_cache)
 			fill_col = get_lightest,
 			symbol_col = get_darkest
 		})
+		:child("scrollbar", new_style{
+			fill_col = get_lightest,
+			symbol_col = get_darkest,
+			indent_col = get_lightest,
+		})
 	
 	local style = new_style{
 		text_col = 36,
@@ -70,6 +75,11 @@ local function initialize(editor, gfx_cache)
 			bevel_shadow = 33,
 		})
 		:child("dictionary", new_style{})
+		:child("scrollbar", new_style{
+			fill_col = 33,
+			symbol_col = 35,
+			indent_col = 34,
+		})
 	
 	local gui = create_gui{
 		update = function()
@@ -164,8 +174,7 @@ local function initialize(editor, gfx_cache)
 	}
 	
 	Scrollbars.attach(animation_list, {
-		fgcol = Darkest,
-		bgcol = Lightest,
+		style = binary_style:get"scrollbar"
 	})
 	
 	---@diagnostic disable-next-line undefined-field

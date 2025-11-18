@@ -155,7 +155,9 @@ local function attach(self, el)
 		draw = function(self) print(self.label, 0, 0, self.style:get"text_col") end,
 	}
 	
-	Scrollbars.attach(el.list)
+	Scrollbars.attach(el.list, {
+		style = el.style:get"scrollbar"
+	})
 	el.container:populate()
 	
 	return el
