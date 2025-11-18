@@ -15,11 +15,23 @@ end
 
 ---Renames the current animation to the given name.
 ---@param self EditorState
----@param name string The new name for the current animation.
-local function rename_animation(self, name)
-	if self.animations[name] then return end
-	self.animations[name], self.animations[self.current_anim_key] = self.animations[self.current_anim_key], nil
-	self.current_anim_key = name
+---@param new_key string The new name for the current animation.
+local function rename_animation(self, old_key, new_key)
+	if self.animations[new_key] then
+		notify("The animation \"" .. new_key .. "\" already exists.")
+		return
+	end
+	
+	self.animations[new_key] = self.animations[old_key]
+	self.animations[old_key] = nil
+	
+	self.animation_order:replace_key(old_key, new_key)
+	self.property_orders[new_key] = self.property_orders[old_key]
+	self.property_orders[old_key] = nil
+	
+	if self.current_anim_key == old_key then
+		self.current_anim_key = new_key
+	end
 	
 	self:on_animations_changed()
 	self.undo_stack:checkpoint()

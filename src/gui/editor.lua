@@ -142,7 +142,7 @@ local function initialize(editor, gfx_cache)
 				
 				get = function(self) return self.item end,
 				set = function(self, value)
-					editor:rename_animation(value)
+					editor:rename_animation(self.item, value)
 					self.item = value
 				end,
 				release = function(self, ctx)
