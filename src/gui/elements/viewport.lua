@@ -53,12 +53,16 @@ local function attach_viewport(self, editor, gfx_cache, el)
 		local vectors = get_2d_vectors(editor)
 		
 		if editor.show_pivot_state == 1 and not editor.playing or editor.show_pivot_state == 0 then
-			pal(7, Lightest)
-			pal(1, Darkest)
+			local style = self.style
+			pal(7, style:get"vector_col")
+			pal(1, style:get"vector_outline_col")
 			
 			for v in all(vectors) do
 				spr(19, self.zoom * v.x - 5, self.zoom * v.y - 5)
 			end
+			
+			pal(7, style:get"pivot_col")
+			pal(1, style:get"pivot_outline_col")
 			spr(20, -4, -4)
 			
 			pal(0)

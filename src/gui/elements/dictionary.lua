@@ -14,10 +14,7 @@ local function attach_fields(self, row, item, key, pad_left, pad_right)
 		y = 0,
 		width = left_width,
 		height = 10,
-		fill_col = 0,
-		text_col = 7,
-		fill_col_focused = 19,
-		text_col_focused = 7,
+		style = self.style:get"field",
 		blinker = self.blinker,
 		get = function() return key end,
 		set = function(_, value) self.set_key(key, value) end,
@@ -29,10 +26,7 @@ local function attach_fields(self, row, item, key, pad_left, pad_right)
 		y = 0,
 		width = right_width,
 		height = 10,
-		fill_col = 0,
-		text_col = 7,
-		fill_col_focused = 19,
-		text_col_focused = 7,
+		style = self.style:get"field",
 		blinker = self.blinker,
 		get = function() return item.value end,
 		set = function(_, value) self.set_value(key, value) end,
@@ -96,8 +90,16 @@ local function factory(self, i, item)
 	return row
 end
 
+local function draw(self)
+	GuiUtils.draw_panel(self)
+	line(2, self.height - 11, self.width - 11, self.height - 11, self.style:get"divider_col")
+end
+
 local function attach(self, el)
+	local draw = el.draw or draw
 	el = self:attach(el)
+	
+	el.draw = draw
 	
 	el.selected_property = 1
 	
@@ -111,6 +113,7 @@ local function attach(self, el)
 		y = 0,
 		width = el.list.width,
 		height = el.list.height,
+		style = el.style,
 		
 		populate = function(self)
 			for i = 1, #self.reorder_buttons do
@@ -148,8 +151,8 @@ local function attach(self, el)
 		x = 2, y = el.height - 9,
 		width = el.add_button.x - 3, height = 8,
 		label = el.label,
-		col = el.col,
-		draw = function(self) print(self.label, 0, 0, 36) end,
+		style = el.style,
+		draw = function(self) print(self.label, 0, 0, self.style:get"text_col") end,
 	}
 	
 	Scrollbars.attach(el.list)
@@ -165,4 +168,5 @@ return {
 	attach_remove_button = attach_remove_button,
 	attach_reorder_button = attach_reorder_button,
 	attach_row = attach_row,
+	draw = draw,
 }

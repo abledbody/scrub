@@ -5,8 +5,13 @@ local function draw(self)
 	
 	local str = has_keyboard_focus and self.str or self:get()
 	
-	local fill_col = has_keyboard_focus and self.fill_col_focused or self.fill_col
-	local text_col = has_keyboard_focus and self.text_col_focused or self.text_col
+	local style = self.style
+	local fill_col = has_keyboard_focus
+		and style:get"fill_col_focused"
+		or style:get"fill_col"
+	local text_col = has_keyboard_focus
+		and style:get"text_col_focused"
+		or style:get"text_col"
 	
 	rectfill(0, 0, self.width - 1, self.height - 1, fill_col)
 	

@@ -8,6 +8,8 @@ local Scrollbars = require"src/gui/elements/scrollbars"
 local Dictionary = require"src/gui/elements/dictionary"
 local Transport = require"src/gui/elements/transport"
 
+local new_style = Utils.new_style
+
 local BLINKER_SPEED <const> = 1 * DT
 local PANEL_HEIGHT <const> = 100
 local ANIMATIONS_PANEL_WIDTH <const> = 100
@@ -18,11 +20,6 @@ local TRANSPORT_WIDTH <const> = 12 * 5 + 5
 
 local blinker = {t = 0}
 
-local function draw_dictionary(self)
-	Utils.draw_panel(self)
-	line(2, self.height - 11, self.width - 11, self.height - 11, 33)
-end
-
 local function draw_add_button(self) spr(2) end
 local function draw_remove_button(self) spr(3) end
 local function draw_swap_button(self) spr(27) end
@@ -31,6 +28,48 @@ local function draw_swap_button(self) spr(27) end
 local function initialize(editor, gfx_cache)
 	-- This one's 269 because the scanlines don't care about window size.
 	Graphics.set_scanline_palette(1, 11, 269 - PANEL_HEIGHT)
+	
+	local get_lightest = function() return Lightest end
+	local get_darkest = function() return Darkest end
+	
+	local binary_style = new_style{
+		border_col = get_lightest,
+		text_col = get_lightest,
+		divider_col = get_lightest,
+	}
+		:child("field", new_style{
+			fill_col = get_darkest,
+			text_col = get_lightest,
+			fill_col_focused = get_lightest,
+			text_col_focused = get_darkest,
+		})
+		:child("viewport", new_style{
+			pivot_col = get_lightest,
+			pivot_outline_col = get_darkest,
+			vector_col = get_lightest,
+			vector_outline_col = get_darkest,
+		})
+		:child("button", new_style{
+			fill_col = get_lightest,
+			symbol_col = get_darkest
+		})
+	
+	local style = new_style{
+		text_col = 36,
+		divider_col = 33,
+	}
+		:child("field", new_style{
+			fill_col = 0,
+			text_col = 7,
+			fill_col_focused = 19,
+			text_col_focused = 7,
+		})
+		:child("panel", new_style{
+			col = 34,
+			bevel_highlight = 35,
+			bevel_shadow = 33,
+		})
+		:child("dictionary", new_style{})
 	
 	local gui = create_gui{
 		update = function()
@@ -42,14 +81,20 @@ local function initialize(editor, gfx_cache)
 		x = 0,
 		y = 0,
 		width = ScreenSize.x - ANIMATIONS_PANEL_WIDTH,
-		height = ScreenSize.y - PANEL_HEIGHT
+		height = ScreenSize.y - PANEL_HEIGHT,
+		style = binary_style:get"viewport"
 	})
 	
 	local animations_panel = gui:attach{
 		x = viewport.width, y = 0,
 		width = ANIMATIONS_PANEL_WIDTH, height = viewport.height,
-		col = Lightest,
-		draw = Utils.border,
+		style = binary_style,
+		label = "Animations",
+		draw = function(self)
+			Utils.border(self)
+			line(2, self.height - 12, self.width - 12, self.height - 12, self.style:get"divider_col")
+			print(self.label, 2, self.height - 10, self.style:get"text_col")
+		end,
 	}
 	
 	local animation_list = animations_panel:attach{
@@ -60,6 +105,7 @@ local function initialize(editor, gfx_cache)
 	local animation_list_container = animation_list:attach{
 		x = 0, y = 0,
 		width = animation_list.width - 9, height = animation_list.height,
+		style = binary_style,
 		populate = Utils.populate,
 		height_equation = function(_, len) return len * 12 end,
 		get = function() return editor:get_animation_keys() end,
@@ -67,9 +113,10 @@ local function initialize(editor, gfx_cache)
 			local row = self:attach{
 				x = 0, y = (i - 1) * 12,
 				width = self.width, height = 12,
+				style = self.style,
 				draw = function(self)
 					if editor.current_anim_key == item then
-						rect(0, 0, self.width - 1, self.height - 1, Lightest)
+						rect(0, 0, self.width - 1, self.height - 1, self.style:get"border_col")
 					end
 				end,
 			}
@@ -79,11 +126,8 @@ local function initialize(editor, gfx_cache)
 				y = 1,
 				width = row.width - 11,
 				height = row.height - 2,
+				style = self.style:get"field",
 				item = item,
-				fill_col = Darkest,
-				text_col = Lightest,
-				fill_col_focused = Lightest,
-				text_col_focused = Darkest,
 				blinker = blinker,
 				
 				get = function(self) return self.item end,
@@ -103,13 +147,14 @@ local function initialize(editor, gfx_cache)
 			row:attach{
 				x = row.width - 9, y = 2,
 				width = 7, height = 7,
+				style = self.style:get"button",
 				cursor = "pointer",
 				draw = function(self)
-					pal(7, Lightest)
-					pal(1, Darkest)
+					local style = self.style
+					pal(1, style:get"fill_col")
+					pal(7, style:get"symbol_col")
 					spr(11, 0, 0)
-					pal(7, 7)
-					pal(1, 1)
+					pal(0)
 				end,
 				click = function(self) editor:remove_animation(item) end,
 			}
@@ -129,14 +174,14 @@ local function initialize(editor, gfx_cache)
 	local add_animation_button = animations_panel:attach{
 		x = animations_panel.width - 10, y = animations_panel.height - 10,
 		width = 8, height = 8,
-		col = Lightest,
+		style = binary_style:get"button",
 		cursor = "pointer",
 		draw = function(self)
-			pal(7, Lightest)
-			pal(1, Darkest)
+			local style = self.style
+			pal(1, style:get"fill_col")
+			pal(7, style:get"symbol_col")
 			spr(10, 0, 0)
-			pal(7, 7)
-			pal(1, 1)
+			pal(0)
 		end,
 		click = function(_) editor:create_animation() end,
 	}
@@ -144,6 +189,7 @@ local function initialize(editor, gfx_cache)
 	local panel = gui:attach{
 		x = 0, y = viewport.height,
 		width = ScreenSize.x - PROPERTIES_WIDTH * 2, height = PANEL_HEIGHT - TIMELINE_HEIGHT,
+		style = style,
 		draw = function(self)
 			Utils.draw_panel(self)
 			spr(24, self.width * 0.5 - 32, 4)
@@ -153,14 +199,15 @@ local function initialize(editor, gfx_cache)
 	local timeline = Timeline.attach(gui, editor, {
 		x = 0,
 		y = ScreenSize.y - TIMELINE_HEIGHT,
-		width = ScreenSize.x,
-		height = TIMELINE_HEIGHT,
+		width = ScreenSize.x, height = TIMELINE_HEIGHT,
+		style = style,
 		draw = Utils.draw_panel,
 	})
 	
 	local transport = Transport.attach(gui, editor, {
 		x = 0, y = timeline.y - TRANSPORT_HEIGHT,
 		width = TRANSPORT_WIDTH, height = TRANSPORT_HEIGHT,
+		style = style,
 		draw = Utils.draw_panel,
 	})
 	
@@ -168,6 +215,7 @@ local function initialize(editor, gfx_cache)
 		x = ScreenSize.x - PROPERTIES_WIDTH * 2 - 11,
 		y = viewport.height,
 		width = 11, height = 11,
+		style = style,
 		draw = function(self)
 			Utils.draw_panel(self)
 			
@@ -193,10 +241,10 @@ local function initialize(editor, gfx_cache)
 		y = viewport.height,
 		width = PROPERTIES_WIDTH,
 		height = panel.height,
+		style = style:get"dictionary",
 		label = "Properties",
 		blinker = blinker,
 		
-		draw = draw_dictionary,
 		draw_add_button = draw_add_button,
 		draw_remove_button = draw_remove_button,
 		draw_swap_button = draw_swap_button,
@@ -221,10 +269,10 @@ local function initialize(editor, gfx_cache)
 		y = viewport.height,
 		width = PROPERTIES_WIDTH,
 		height = panel.height,
+		style = style:get"dictionary",
 		label = "Events",
 		blinker = blinker,
 		
-		draw = draw_dictionary,
 		draw_add_button = draw_add_button,
 		draw_remove_button = draw_remove_button,
 		
