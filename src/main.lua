@@ -94,8 +94,12 @@ function _init()
 	
 	on_event("gained_focus", function()
 		--There's a chance the gfx or pal files have been updated.
-		gfx_cache = {}
-		poke4(0x5000, fetch(DATP .. "pal/0.pal"):get())
+		for k in pairs(gfx_cache) do
+			gfx_cache[k] = nil
+		end
+		local palette = fetch(DATP .. "pal/0.pal")
+		if not palette then return end
+		poke4(0x5000, palette:get())
 	end)
 end
 
