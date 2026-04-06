@@ -110,7 +110,7 @@ function _update()
 	
 	if state.editor.playing then
 		local last_frame = animator.frame_i
-		animator:advance(DT)
+		animator:advance(editor.dt)
 		if animator.frame_i ~= last_frame then
 			editor:on_frame_change()
 		end

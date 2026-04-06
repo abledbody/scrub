@@ -72,6 +72,8 @@ local function attach(self, editor, el)
 			editor:last_frame()
 		end,
 	}
+
+	return el
 end
 
 return {

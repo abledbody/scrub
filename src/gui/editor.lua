@@ -219,6 +219,25 @@ local function initialize(editor, gfx_cache)
 		style = style,
 		draw = Utils.draw_panel,
 	})
+
+	local delta_time = gui:attach({
+		x = transport.x + transport.width + 4,
+		y = timeline.y - 11,
+		width = 50,
+		height = 10,
+		draw = function(self)
+			spr(28, 1, 1)
+		end
+	})
+	Field.attach(delta_time, {
+		x = 10, y = 0,
+		width = delta_time.width - 10,
+		height = delta_time.height,
+		style = style:get("field"),
+		blinker = blinker,
+		get = function() return tostr(editor.dt) end,
+		set = function(_, value) editor.dt = tonum(value) or editor.dt end,
+	})
 	
 	local show_pivot_button = gui:attach{
 		x = ScreenSize.x - PROPERTIES_WIDTH * 2 - 11,

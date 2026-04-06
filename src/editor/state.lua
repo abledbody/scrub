@@ -111,14 +111,14 @@ local m_editor_state = {
 	remove_animation   = Animations.remove_animation,
 	get_animation_keys = Animations.get_animation_keys,
 	get_animation      = Animations.get_animation,
-
+	
 	get_property_strings   = Properties.get_property_strings,
 	rename_property        = Properties.rename_property,
 	set_property_by_string = Properties.set_property_by_string,
 	create_property        = Properties.create_property,
 	remove_property        = Properties.remove_property,
 	reorder_property       = Properties.reorder_property,
-
+	
 	initialize_events   = Events.initialize_events,
 	clean_events        = Events.clean_events,
 	get_event_strings   = Events.get_event_strings,
@@ -142,16 +142,15 @@ function m_editor_state:export_metadata()
 	end
 	
 	---@class EditorMetadata
-	---@field animation_order [string]
-	---@field property_orders table<string, [string]>
-	---@field last_animation string
-	---@field last_frame integer
-	return {
+	local metadata = {
 		animation_order = self.animation_order.keys,
 		property_orders = exported_property_orders,
 		last_animation = self.current_anim_key,
 		last_frame = self.animator.frame_i,
+		dt = self.dt
 	}
+
+	return metadata
 end
 
 function m_editor_state:on_reset()
@@ -163,13 +162,15 @@ function m_editor_state:on_reset()
 	self:on_frame_change()
 end
 
+---@return LoadedEditorState
 function m_editor_state:get_state()
 	local exported_property_orders = {}
 	for anim_key, order in pairs(self.property_orders) do
 		exported_property_orders[anim_key] = order.keys
 	end
 	
-	return {
+	---@class LoadedEditorState
+	local loaded_state = {
 		animations = self.animations,
 		
 		property_orders = exported_property_orders,
@@ -179,9 +180,13 @@ function m_editor_state:get_state()
 		frame_i = self.animator.frame_i,
 		
 		timeline_selection = self.timeline_selection,
+		dt = self.dt,
 	}
+
+	return loaded_state
 end
 
+---@param loaded_state LoadedEditorState
 function m_editor_state:set_state(loaded_state)
 	self.animations = loaded_state.animations
 	self.property_orders = import_property_orders(loaded_state.property_orders, self.animations)
@@ -194,6 +199,7 @@ function m_editor_state:set_state(loaded_state)
 	
 	self:set_animation(loaded_state.current_anim_key)
 	self:set_frame(loaded_state.frame_i)
+	self.dt = loaded_state.dt
 	
 	self.timeline_selection = loaded_state.timeline_selection
 	
@@ -224,6 +230,7 @@ local function new_state(animations, palette, metadata)
 		playing = false, ---@type boolean
 		timeline_selection = {first = 1, last = 1}, ---@type {first:integer, last:integer}
 		lock_selection_to_frame = false, ---@type boolean
+		dt = metadata.dt or 1, ---@type number
 		
 		property_orders = import_property_orders(metadata.property_orders, animations),
 		animation_order = import_animation_order(metadata.animation_order, animations),
