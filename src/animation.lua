@@ -1,15 +1,18 @@
---- @class Animation A table containing a timing array and an arbitrary number of
---- other arrays from which to pull animation data. The indices of each array
---- correspond to a particular frame. If any data is at frame index -1, it will
---- be used for every frame of the animation.
---- @field duration [number] An array indicating how long it takes for each frame to elapse. Does not support index -1.
---- @field events [table<string,any>]? A table of events that occur at each frame. The keys are the event names, and the values are the data associated with that event.
+local max = math.max
+local insert = table.insert
 
---- @alias FrameEvents table<string,any> A table of events that occur at a specific frame.
+---@class Animation A table containing a timing array and an arbitrary number of
+---other arrays from which to pull animation data. The indices of each array
+---correspond to a particular frame. For any key which is not duration, if data is
+---missing from any fetched index, the value at index -1 will be used instead.
+---@field duration [number] An array indicating how long it takes for each frame to elapse. Does not support index -1.
+---@field events [table<string,any>]? A table of events that occur at each frame. The keys are the event names, and the values are the data associated with that event.
 
---- Advances the time of the animator by dt.
---- @param self Animator The animator.
---- @param dt number The time to advance by.
+---@alias FrameEvents table<string,any> A table of events that occur at a specific frame.
+
+---Advances the time of the animator by dt.
+---@param self Animator The animator.
+---@param dt number The time to advance by.
 local function advance(self, dt)
 	self.frame_advances = 0
 	self.ended = false
@@ -27,9 +30,9 @@ local function advance(self, dt)
 	local events = {}
 	
 	self.frame_t += dt
-	local duration = durations[self.frame_i] or durations[1]
+	local duration = max(durations[self.frame_i] or durations[1], 0)
 	
-	while self.frame_t > duration do
+	while self.frame_t > duration and self.frame_advances < self.max_advances do
 		self.frame_t -= duration
 		
 		self.frame_i += 1
@@ -40,41 +43,42 @@ local function advance(self, dt)
 		end
 		
 		local frame_events = anim.events and anim.events[self.frame_i]
-		if frame_events then add(events, frame_events) end
+		if frame_events then insert(events, frame_events) end
 		
-		duration = durations[self.frame_i]
+		duration = max(durations[self.frame_i], 0)
 	end
 	
 	self.events = events
 end
 
---- Fetches the data in the current frame of the current animation for the given key.
---- If there is data at index -1 of the array at that key, that is returned regardless of the current frame index.
---- @param self Animator The animator.
---- @param key any The key to index the animation by.
---- @return any value The value fetched by the key.
+---Fetches the data in the current frame of the current animation for the given key.
+---If there is no data at the current frame index, the data at index -1 of the array
+---at that key is returned.
+---@param self Animator The animator.
+---@param key any The key to index the animation by.
+---@return any value The value fetched by the key.
 local function fetch(self, key)
 	local anim = self.anim
 	if not anim then return nil end
 	
 	local arr = anim[key]
 	if not arr then return nil end
-	
+
 	return arr[self.frame_i] or arr[-1]
 end
 
---- Resets the animator to a specific frame.
---- @param self Animator The animator.
---- @param frame number? The frame to reset to. Defaults to 1.
+---Resets the animator to a specific frame.
+---@param self Animator The animator.
+---@param frame number? The frame to reset to. Defaults to 1.
 local function reset(self, frame)
 	self.frame_i = frame or 1
 	self.frame_t = 0
 	self.frame_advances = 0
 	self.ended = false
-	self.events = {self.anim.events and self.anim.events[self.frame_i]}
+	self.events = {self.anim and self.anim.events and self.anim.events[self.frame_i]}
 end
 
-local c_animator = {
+local m_animator = {
 	__index = function(self, key)
 		-- The only value in Animator that is valid to be nil is anim.
 		-- We can safely assume all other misses are attempts at getting properties.
@@ -84,36 +88,32 @@ local c_animator = {
 	end,
 }
 
---- Creates a new animator.
---- @param anim Animation? The animation to initialize this animator with.
---- @return Animator animator The newly created animator.
+---Creates a new animator.
+---@param anim Animation? The animation to initialize this animator with.
+---@return Animator animator The newly created animator.
 local function new_animator(anim)
-	--- @class Animator Responsible for handling animation playback state and frame data access.
-	--- @field anim Animation? The current animation, which indicates the timing and indexing.
-	--- @field frame_i integer The index of the current frame.
-	--- @field frame_t number The time that has elapsed since entering the current frame in seconds.
-	--- @field frame_advances integer How many times the frame index has incremented during the last call to `advance`.
-	--- @field ended boolean Whether or not the last call to `advance` advanced past the end of the animation.
-	--- @field events [FrameEvents] An array of all events that have occurred since the last call to `advance`.
-	--- @field [string] any Any value which is present in the current animation and frame, with a key that doesn't match any of Animator's fields or methods.
+	---@class Animator Responsible for handling animation playback state and frame data access.
+	---@field [string] any Any value which is present in the current animation and frame, with a key that doesn't match any of Animator's fields or methods.
 	local animator = {
-		anim = anim,
-		frame_i = 1,
-		frame_t = 0,
-		frame_advances = 0,
-		ended = false,
-		events = {},
+		anim = anim, ---@type Animation? The current animation, which indicates the timing and indexing.
+		frame_i = 1, ---@type integer The index of the current frame.
+		frame_t = 0, ---@type number The time that has elapsed since entering the current frame.
+		frame_advances = 0, ---@type integer How many times the frame index has incremented during the last call to `advance`.
+		max_advances = 100, ---@type integer The maximum number of times the frame can advance during a single call.
+		ended = false, ---@type boolean Whether or not the last call to `advance` advanced past the end of the animation.
+		events = {}, ---@type [FrameEvents] An array of all events that have occurred since the last call to `advance`.
 		
-		advance = advance, ---@type fun(self:Animator, dt:number)
-		reset = reset, ---@type fun(self:Animator, frame?:number)
+		advance = advance,
+		reset = reset,
 	}
-	return setmetatable(animator, c_animator)
+
+	return setmetatable(animator, m_animator)
 end
 
---- Generates an animation by a rule function.
---- @param length integer The number of frames to add to the animation.
---- @param rule fun(frame_i:integer):{duration:number} A function which takes in a frame index and returns a table with all the keys and values for that frame. The `duration` key is always required.
---- @return Animation animation An Animation generated via the provided rule.
+---Generates an animation by a rule function.
+---@param length integer The number of frames to add to the animation.
+---@param rule fun(frame_i:integer):{duration:number} A function which takes in a frame index and returns a table with all the keys and values for that frame. The `duration` key is always required.
+---@return Animation animation An Animation generated via the provided rule.
 local function animation_by_rule(length, rule)
 	local animation = {}
 	for frame_i = 1, length do
@@ -130,4 +130,3 @@ return {
 	new_animator = new_animator,
 	animation_by_rule = animation_by_rule,
 }
-
