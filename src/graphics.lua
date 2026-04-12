@@ -59,6 +59,12 @@ local function get_indexed_gfx(gfx_cache, gfx_file_index)
 	if gfx_data then return gfx_data end
 	
 	gfx_data = fetch("/ram/cart/gfx/" .. gfx_file_index .. ".gfx")
+	
+	-- If there's no 0.gfx, get the graphics from the demo mode.
+	if gfx_file_index == 0 and not gfx_data then
+		gfx_data = fetch(DATP .. "gfx/demo.gfx")
+	end
+	
 	-- Failed fetches plug a false into the cache to avoid repeated attempts.
 	gfx_cache[gfx_file_index] = gfx_data or false
 	

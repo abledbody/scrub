@@ -86,10 +86,13 @@ function _init()
 		editor_state:clean_events()
 	end
 	
+	local gfx0 = fetch("/ram/cart/gfx/0.gfx")
+	local initial_file = gfx0 and "/ram/cart/anm/0.anm" or DATP .. "anm/demo.anm"
+	
 	wrangle_working_file(
 		save_working_file,
 		load_working_file,
-		"/ram/cart/anm/0.anm"
+		initial_file
 	)
 	
 	on_event("gained_focus", function()
