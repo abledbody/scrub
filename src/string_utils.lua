@@ -49,6 +49,8 @@ local function value_to_string(value)
 		return fmt("\"%s\"", value)
 	elseif value_type == "userdata" then
 		return fmt("(" .. string.rep("%.15g", #value, ",") .. ")", value:get())
+	elseif value_type == "nil" then
+		return "nil"
 	end
 	
 	return tostr(value)

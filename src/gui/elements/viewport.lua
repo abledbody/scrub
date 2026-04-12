@@ -96,29 +96,49 @@ local function attach_viewport(self, editor, gfx_cache, el)
 			local m_pos = vec(msg.mx, msg.my)
 			local pivot = editor.animator.pivot
 			if pivot then
-				self.sprite_grab_loc = pivot + m_pos / self.zoom
+				self.sprite_grab_loc = pivot + (m_pos + self.scroll) / self.zoom
+				self.pivot_drag = pivot
 			end
-			self.pivot_drag = true
 		end
 	end
 	
 	function el:release(msg)
-		self.pivot_drag = msg.mb & 1 != 0
+		local initial_pivot_pos = self.pivot_drag
+		if msg.mb & 1 == 0 then
+			self.pivot_drag = nil
+		end
+		
+		if initial_pivot_pos and not self.pivot_drag then
+			if editor.animator.pivot.x != initial_pivot_pos.x
+				and editor.animator.pivot.y != initial_pivot_pos.y
+			then
+				editor.undo_stack:checkpoint()
+			end
+			self.pivot_drag = nil
+		end
 	end
 	
 	function el:drag(msg)
-		if editor.playing then self.pivot_drag = false end
-		
-		if self.pivot_drag and type(editor.animator.pivot) == "userdata" then
-			local m_pos = vec(msg.mx, msg.my)
-			local pivot_pos = (self.sprite_grab_loc - m_pos / self.zoom + 0.25) // 0.5 * 0.5
-			editor.animator.anim.pivot[editor.animator.frame_i] = pivot_pos
-			editor:on_properties_changed()
+		if editor.playing and self.pivot_drag then
+			if editor.animator.pivot.x != self.pivot_drag.x
+				and editor.animator.pivot.y != self.pivot_drag.y
+			then
+				editor.undo_stack:checkpoint()
+			end
+			self.pivot_drag = nil
 		end
 		
 		if msg.mb & 2 != 0 then
 			self.scroll -= vec(msg.dx, msg.dy)
 			clamp_view(self)
+		end
+		
+		if self.pivot_drag and type(editor.animator.pivot) == "userdata" then
+			local m_pos = vec(msg.mx, msg.my)
+			local pivot_pos = (self.sprite_grab_loc - (m_pos + self.scroll) / self.zoom + 0.25) // 0.5 * 0.5
+			
+			editor.animator.anim.pivot[editor.animator.frame_i] = pivot_pos
+			editor:on_properties_changed()
 		end
 	end
 	
