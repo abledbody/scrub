@@ -78,7 +78,7 @@ function _init()
 			data = nil
 		end
 		editor_state = Editor.new_state(
-			data or {animation_1 = {sprite = {0}, duration = {0.1}}},
+			data or {animation_1 = {sprite = {0}, duration = {1}}},
 			palette,
 			metadata or {}
 		)

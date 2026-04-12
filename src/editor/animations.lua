@@ -43,7 +43,7 @@ end
 local function create_animation(self)
 	local anim_name = StringUtils.next_name("new", function(key) return self.animations[key] end)
 	
-	self.animations[anim_name] = {sprite = {0}, duration = {0.1}}
+	self.animations[anim_name] = {sprite = {0}, duration = {1}}
 	self.property_orders[anim_name] = new_index_map({"duration", "sprite"})
 	self.animation_order:insert(anim_name)
 	self:set_animation(anim_name)
