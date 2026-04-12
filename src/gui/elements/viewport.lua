@@ -30,6 +30,8 @@ local function attach_viewport(self, editor, gfx_cache, el)
 	el.zoom = 1
 	el.hovering = false
 	el.hover_called = false
+	el.sprite_grab_loc = vec(0, 0)
+	el.cursor = "grab"
 	
 	function el:update()
 		self.hovering = self.hover_called
@@ -88,10 +90,36 @@ local function attach_viewport(self, editor, gfx_cache, el)
 		self.scroll.x = mid(low_x, self.scroll.x, high_x)
 		self.scroll.y = mid(low_y, self.scroll.y, high_y)
 	end
+
+	function el:click(msg)
+		if msg.mb & 1 != 0 and not editor.playing then
+			local m_pos = vec(msg.mx, msg.my)
+			local pivot = editor.animator.pivot
+			if pivot then
+				self.sprite_grab_loc = pivot + m_pos / self.zoom
+			end
+			self.pivot_drag = true
+		end
+	end
+	
+	function el:release(msg)
+		self.pivot_drag = msg.mb & 1 != 0
+	end
 	
 	function el:drag(msg)
-		self.scroll -= vec(msg.dx, msg.dy)
-		clamp_view(self)
+		if editor.playing then self.pivot_drag = false end
+		
+		if self.pivot_drag and type(editor.animator.pivot) == "userdata" then
+			local m_pos = vec(msg.mx, msg.my)
+			local pivot_pos = (self.sprite_grab_loc - m_pos / self.zoom + 0.25) // 0.5 * 0.5
+			editor.animator.anim.pivot[editor.animator.frame_i] = pivot_pos
+			editor:on_properties_changed()
+		end
+		
+		if msg.mb & 2 != 0 then
+			self.scroll -= vec(msg.dx, msg.dy)
+			clamp_view(self)
+		end
 	end
 	
 	function el:hover(msg)
