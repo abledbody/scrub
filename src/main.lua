@@ -53,7 +53,10 @@ function _init()
 	local sw, sh = get_display():attribs()
 	ScreenSize = vec(sw, sh)
 	
-	mkdir("/ram/cart/anm")
+	if not fetch_metadata("/ram/cart/anm") then
+		mkdir("/ram/cart/anm")
+		store_metadata("/ram/cart/anm", { icon = --[[pod_type="gfx"]]unpod("b64:bHo0AEkAAABZAAAA8Q1weHUAQyAQEATwCV8VgA4vGC8PDgBuLxg-Dx7dAgCwPQ8YDQwNDE0ePRwIAEA9Hi08CAAVLQgABBgAIk0MCABw3R7dDgDeAA==") })
+	end
 	
 	local palette = fetch("/ram/cart/pal/0.pal")
 	if palette then

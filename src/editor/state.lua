@@ -147,7 +147,8 @@ function m_editor_state:export_metadata()
 		property_orders = exported_property_orders,
 		last_animation = self.current_anim_key,
 		last_frame = self.animator.frame_i,
-		dt = self.dt
+		dt = self.dt,
+		icon = --[[pod_type="gfx"]]unpod("b64:bHo0AFYAAABxAAAA8xVweHUAQyAQEAQAnxVQDncPDw5ADncdDjAOdy0OIA53PQ4QDrcEAIAnDxgHDAcMNwsAEBwKAGAnDhAOFzwKABkXCgAGHgAkNwwKAJC3DhAOtw4Q3gA=")
 	}
 
 	return metadata
